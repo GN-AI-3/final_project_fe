@@ -1,4 +1,5 @@
 // lib/screens/chat_screen.dart
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
@@ -47,7 +48,9 @@ class ChatScreenState extends State<ChatScreen> {
     if (_messageController.text.trim().isEmpty) return;
 
     final userMessage = _messageController.text;
-    print('User message: $userMessage');
+    if (kDebugMode) {
+      print('User message: $userMessage');
+    }
     _messageController.clear();
 
     setState(() {
@@ -59,9 +62,13 @@ class ChatScreenState extends State<ChatScreen> {
     });
 
     try {
-      print('Calling _chatService.sendMessage');
+      if (kDebugMode) {
+        print('Calling _chatService.sendMessage');
+      }
       final response = await _chatService.sendMessage(userMessage, []);
-      print('Received response from service: $response');
+      if (kDebugMode) {
+        print('Received response from service: $response');
+      }
 
       if (mounted) {
         setState(() {
@@ -70,8 +77,10 @@ class ChatScreenState extends State<ChatScreen> {
         });
       }
     } catch (e, stackTrace) {
-      print('Error in _sendMessage: $e');
-      print('Stack trace: $stackTrace');
+      if (kDebugMode) {
+        print('Error in _sendMessage: $e');
+        print('Stack trace: $stackTrace');
+      }
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -89,23 +98,28 @@ class ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: const Text(ChatConstants.appTitle),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: _messages.length,
-              padding: EdgeInsets.all(ChatConstants.messagePadding),
-              itemBuilder: (context, index) {
-                return ChatMessageBubble(message: _messages[index]);
-              },
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: _messages.length,
+                padding: const EdgeInsets.all(ChatConstants.messagePadding),
+                itemBuilder: (context, index) {
+                  return ChatMessageBubble(message: _messages[index]);
+                },
+              ),
             ),
-          ),
-          ChatInputField(
-            controller: _messageController,
-            onSend: _sendMessage,
-            isLoading: _isLoading,
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: ChatInputField(
+                controller: _messageController,
+                onSend: _sendMessage,
+                isLoading: _isLoading,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

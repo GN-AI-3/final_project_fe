@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'chat_screen.dart';
 import 'calendar_screen.dart';
+import 'pt_contract_screen.dart';
 import '../services/fcm_service.dart';
 import 'package:http/http.dart' as http;
 
@@ -70,6 +71,20 @@ class _HomeScreenState extends State<HomeScreen> {
               },
               icon: const Icon(Icons.calendar_today),
               label: const Text('PT 스케줄'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PtContractScreen()),
+                );
+              },
+              icon: const Icon(Icons.description),
+              label: const Text('PT 계약 관리'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),

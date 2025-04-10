@@ -16,16 +16,16 @@ class ChatInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.all(ChatConstants.messagePadding),
+      padding: const EdgeInsets.all(ChatConstants.messagePadding),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: controller,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: ChatConstants.hintText,
-                border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.symmetric(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
@@ -33,7 +33,7 @@ class ChatInputField extends StatelessWidget {
               onSubmitted: (_) => onSend(),
             ),
           ),
-          SizedBox(width: ChatConstants.iconSpacing),
+          const SizedBox(width: ChatConstants.iconSpacing),
           IconButton(
             icon: isLoading
                 ? const SizedBox(
