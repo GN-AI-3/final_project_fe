@@ -33,12 +33,14 @@ class Member {
       profileImage: json['profile_image'] as String?,
       userType: json['user_type'] as String? ?? 'MEMBER',
       goal: json['goal'] as String?,
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
-      modifiedAt: json['modified_at'] != null 
-          ? DateTime.parse(json['modified_at'] as String)
-          : DateTime.now(),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'] as String)
+              : DateTime.now(),
+      modifiedAt:
+          json['modified_at'] != null
+              ? DateTime.parse(json['modified_at'] as String)
+              : DateTime.now(),
     );
   }
-} 
+}

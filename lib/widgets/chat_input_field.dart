@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../constants/chat_constants.dart';
 
 class ChatInputField extends StatelessWidget {
   final TextEditingController controller;
@@ -16,15 +15,23 @@ class ChatInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(ChatConstants.messagePadding),
+      padding: const EdgeInsets.all(8.0),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: controller,
               decoration: const InputDecoration(
-                hintText: ChatConstants.hintText,
-                border: OutlineInputBorder(),
+                hintText: '메시지를 입력하세요.',
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xff2746f8)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xff2746f8)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Color(0xff2746f8)),
+                ),
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
@@ -33,19 +40,20 @@ class ChatInputField extends StatelessWidget {
               onSubmitted: (_) => onSend(),
             ),
           ),
-          const SizedBox(width: ChatConstants.iconSpacing),
+          const SizedBox(width: 8.0),
           IconButton(
-            icon: isLoading
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send),
+            icon:
+                isLoading
+                    ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : const Icon(Icons.send),
             onPressed: isLoading ? null : onSend,
           ),
         ],
       ),
     );
   }
-} 
+}

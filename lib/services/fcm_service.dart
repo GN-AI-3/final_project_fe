@@ -23,19 +23,26 @@ class FCMService {
     // flutter_local_notifications 초기화
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosInit = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
     await flutterLocalNotificationsPlugin.initialize(initSettings);
 
     // 알림 채널 등록
     await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     // 포그라운드 메시지 수신 리스너
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
   }
 
-  static Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  static Future<void> _firebaseMessagingBackgroundHandler(
+    RemoteMessage message,
+  ) async {
     if (kDebugMode) {
       print('백그라운드 메시지 수신: ${message.notification?.title}');
     }
@@ -68,4 +75,4 @@ class FCMService {
   static Future<String?> getFCMToken() async {
     return await FirebaseMessaging.instance.getToken();
   }
-} 
+}

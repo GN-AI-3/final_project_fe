@@ -12,10 +12,7 @@ class ChatMessage {
   });
 
   Map<String, dynamic> toJson() {
-    return {
-      'content': content,
-      'role': role,
-    };
+    return {'content': content, 'role': role};
   }
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -23,9 +20,10 @@ class ChatMessage {
       id: json['id'] != null ? json['id'] as int : null,
       content: json['content'] as String,
       role: json['role'] as String,
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt'].toString())
-          : null,
+      createdAt:
+          json['createdAt'] != null
+              ? DateTime.parse(json['createdAt'].toString())
+              : null,
     );
   }
 }

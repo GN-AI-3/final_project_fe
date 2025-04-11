@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Env {
@@ -14,4 +15,4 @@ class Env {
     // iOS나 다른 플랫폼의 경우
     return dotenv.env['FETCH_SERVER_URL2']!;
   }
-} 
+}

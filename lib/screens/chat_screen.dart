@@ -1,11 +1,23 @@
 // lib/screens/chat_screen.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
-import '../constants/chat_constants.dart';
-import '../widgets/chat_message_bubble.dart';
 import '../widgets/chat_input_field.dart';
+import '../widgets/chat_message_bubble.dart';
+
+class ChatConstants {
+  static const String userRole = 'user';
+  static const String assistantRole = 'assistant';
+  static const String errorMessage = '오류가 발생했습니다: ';
+  static const String appTitle = '챗봇';
+
+  static const double messagePadding = 8.0;
+  static const double messageMargin = 4.0;
+  static const double borderRadius = 12.0;
+  static const double iconSpacing = 8.0;
+}
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -54,10 +66,9 @@ class ChatScreenState extends State<ChatScreen> {
     _messageController.clear();
 
     setState(() {
-      _messages.add(ChatMessage(
-        content: userMessage,
-        role: ChatConstants.userRole,
-      ));
+      _messages.add(
+        ChatMessage(content: userMessage, role: ChatConstants.userRole),
+      );
       _isLoading = true;
     });
 
@@ -97,6 +108,7 @@ class ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(ChatConstants.appTitle),
+        forceMaterialTransparency: true,
       ),
       body: SafeArea(
         child: Column(

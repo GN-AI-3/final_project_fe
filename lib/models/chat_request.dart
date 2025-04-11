@@ -4,10 +4,7 @@ class ChatRequest {
   final String message;
   final List<ChatMessage> history;
 
-  ChatRequest({
-    required this.message,
-    this.history = const [],
-  });
+  ChatRequest({required this.message, this.history = const []});
 
   Map<String, dynamic> toJson() {
     return {
