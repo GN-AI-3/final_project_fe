@@ -28,7 +28,12 @@ class PtContractService {
       _validateResponse(response);
 
       final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.map((json) => PtContract.fromJson(json)).toList();
+      
+      final contracts = jsonList.map((json) {
+        return PtContract.fromJson(json);
+      }).toList();
+      
+      return contracts;
     } catch (e) {
       _logError('PT 계약 회원 목록 조회 중 오류 발생', e);
       rethrow;
@@ -46,6 +51,15 @@ class PtContractService {
   void _validateResponse(http.Response response) {
     if (response.statusCode != 200) {
       throw Exception('API 요청 실패: ${response.statusCode}');
+    }
+    
+    try {
+      final json = jsonDecode(response.body);
+      if (json is! List) {
+        throw Exception('잘못된 응답 형식: List가 아닙니다');
+      }
+    } catch (e) {
+      throw Exception('응답 데이터 파싱 실패: $e');
     }
   }
 

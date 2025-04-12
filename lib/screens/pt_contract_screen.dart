@@ -7,10 +7,10 @@ class PtContractScreen extends StatefulWidget {
   const PtContractScreen({Key? key}) : super(key: key);
 
   @override
-  _PtContractScreenState createState() => _PtContractScreenState();
+  PtContractScreenState createState() => PtContractScreenState();
 }
 
-class _PtContractScreenState extends State<PtContractScreen> {
+class PtContractScreenState extends State<PtContractScreen> {
   final PtContractService _ptContractService = PtContractService();
   List<PtContract> _contracts = [];
   String? _selectedStatus;
@@ -31,6 +31,8 @@ class _PtContractScreenState extends State<PtContractScreen> {
   }
 
   Future<void> _loadContracts() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
@@ -39,17 +41,35 @@ class _PtContractScreenState extends State<PtContractScreen> {
       final contracts = await _ptContractService.getContractMembers(
         _selectedStatus,
       );
+      
+      if (!mounted) return;
+      
       setState(() {
         _contracts = contracts;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('계약 목록을 불러오는데 실패했습니다: $e')));
+      
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('오류'),
+          content: Text('계약 목록을 불러오는데 실패했습니다: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -171,7 +191,7 @@ class _PtContractScreenState extends State<PtContractScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 128),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -190,7 +210,7 @@ class _PtContractScreenState extends State<PtContractScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 128),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(

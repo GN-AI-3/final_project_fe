@@ -32,7 +32,22 @@ class ScheduleService {
       _validateResponse(response);
 
       final List<dynamic> data = jsonDecode(response.body);
-      return data.map((json) => Schedule.fromJson(json)).toList();
+      if (kDebugMode) {
+        print('일정 목록 응답: $data');
+      }
+      
+      final schedules = data.map((json) {
+        if (kDebugMode) {
+          print('일정 데이터 파싱: $json');
+        }
+        return Schedule.fromJson(json);
+      }).toList();
+      
+      if (kDebugMode) {
+        print('파싱된 일정 목록: $schedules');
+      }
+      
+      return schedules;
     } catch (e) {
       _logError('일정 조회 중 오류 발생', e);
       rethrow;
@@ -125,6 +140,12 @@ class ScheduleService {
   void _validateResponse(http.Response response) {
     if (response.statusCode != 200) {
       throw Exception('API 요청 실패: ${response.statusCode}');
+    }
+    
+    try {
+      jsonDecode(response.body);
+    } catch (e) {
+      throw Exception('응답 데이터 파싱 실패: $e');
     }
   }
 

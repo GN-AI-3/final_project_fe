@@ -69,7 +69,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.grey.withValues(alpha: 128),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(

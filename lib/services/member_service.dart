@@ -4,63 +4,92 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/env.dart';
-
-class Member {
-  final int id;
-  final String name;
-  final String email;
-  final String? phone;
-  final String? profileImage;
-  final String userType = 'MEMBER';
-  final String? goal;
-  final DateTime createdAt;
-  final DateTime modifiedAt;
-
-  Member({
-    required this.id,
-    required this.name,
-    required this.email,
-    this.phone,
-    this.profileImage,
-    this.goal,
-    required this.createdAt,
-    required this.modifiedAt,
-  });
-
-  factory Member.fromJson(Map<String, dynamic> json) {
-    return Member(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      phone: json['phone'] as String?,
-      profileImage: json['profile_image'] as String?,
-      goal: json['goal'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      modifiedAt: DateTime.parse(json['modified_at'] as String),
-    );
-  }
-}
+import '../models/member.dart';
 
 class MemberService {
-  final String baseUrl = Env.getServerURL();
+  static String get baseUrl => Env.getServerURL();
+  static const String _authToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoi7J6l6re87JqwIiwiaWQiOjQsInVzZXJUeXBlIjoiTUVNQkVSIiwiZW1haWwiOiJ1c2VyMUB0ZXN0LmNvbSIsImdvYWxzIjpbIldFSUdIVF9MT1NTIl0sImlhdCI6MTc0NDQxOTY1MSwiZXhwIjoxNzQ0Nzc5NjUxfQ.XLuou7yQ_DQ8PVchBOeHUqnlzXUChCzt4bUFYKvC8OldAfHkV40s4YmU4V81cpaE';
 
-  Future<List<Member>> getMembers() async {
+  static const String _meEndpoint = '/api/member/me';
+  static const String _logoutEndpoint = '/api/member/logout';
+  static const Map<String, String> _defaultHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $_authToken',
+  };
+
+  Future<Member> getMyInfo() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/pt_contracts/members'),
+        Uri.parse('$baseUrl$_meEndpoint'),
+        headers: _defaultHeaders,
       );
+      _validateResponse(response);
 
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonList = json.decode(response.body);
-        return jsonList.map((json) => Member.fromJson(json)).toList();
-      } else {
-        throw Exception('회원 목록을 불러오는데 실패했습니다: ${response.statusCode}');
+      final json = jsonDecode(response.body);
+      if (kDebugMode) {
+        print('회원 정보 응답: $json');
+      }
+      
+      final member = Member.fromJson(json);
+      if (kDebugMode) {
+        print('파싱된 회원 정보: $member');
+      }
+      
+      return member;
+    } catch (e) {
+      _logError('회원 정보 조회 중 오류 발생', e);
+      rethrow;
+    }
+  }
+
+  Future<Member> updateMyInfo(Member member) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl$_meEndpoint'),
+        headers: _defaultHeaders,
+        body: jsonEncode(member.toJson()),
+      );
+      _validateResponse(response);
+
+      final json = jsonDecode(response.body);
+      return Member.fromJson(json);
+    } catch (e) {
+      _logError('회원 정보 수정 중 오류 발생', e);
+      rethrow;
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl$_logoutEndpoint'),
+        headers: _defaultHeaders,
+      );
+      _validateResponse(response);
+    } catch (e) {
+      _logError('로그아웃 중 오류 발생', e);
+      rethrow;
+    }
+  }
+
+  void _validateResponse(http.Response response) {
+    if (response.statusCode != 200) {
+      throw Exception('API 요청 실패: ${response.statusCode}');
+    }
+    
+    try {
+      final json = jsonDecode(response.body);
+      if (json is! Map) {
+        throw Exception('잘못된 응답 형식: Map이 아닙니다');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('회원 목록 조회 중 오류 발생: $e');
-      }
-      rethrow;
+      throw Exception('응답 데이터 파싱 실패: $e');
+    }
+  }
+
+  void _logError(String message, dynamic error) {
+    if (kDebugMode) {
+      print('$message: $error');
     }
   }
 }

@@ -67,11 +67,51 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
     return _selectedHour;
   }
 
+  bool _validateForm() {
+    if (_selectedContract == null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('알림'),
+          content: const Text('PT 회원을 선택해주세요'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  void _showError(String message, dynamic error) {
+    if (kDebugMode) {
+      print('$message: $error');
+    }
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('오류'),
+          content: Text('$message: $error'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   Future<void> _createSchedule() async {
     if (!_validateForm()) return;
 
     setState(() => _isLoading = true);
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     try {
@@ -95,36 +135,12 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
 
       widget.onScheduleAdded();
       navigator.pop();
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('일정이 추가되었습니다')),
-      );
     } catch (e) {
       _showError('일정 추가에 실패했습니다', e);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  bool _validateForm() {
-    if (_selectedContract == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('PT 회원을 선택해주세요')));
-      return false;
-    }
-    return true;
-  }
-
-  void _showError(String message, dynamic error) {
-    if (kDebugMode) {
-      print('$message: $error');
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$message: $error')));
     }
   }
 
@@ -140,16 +156,17 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                '새 일정 추가',
+                '새 일정',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               _buildContractDropdown(),
               const SizedBox(height: 16),
               _buildDatePicker(),
-              const SizedBox(height: 16),
-              _buildTimeSelector(),
-              const SizedBox(height: 16),
+              Transform.translate(
+                offset: const Offset(0, -20),
+                child: _buildTimeSelector(),
+              ),
               _buildActionButtons(),
             ],
           ),
@@ -168,7 +185,7 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
           isExpanded: true,
           decoration: const InputDecoration(
             labelText: 'PT 회원 선택',
-            hintText: 'PT 계약 회원을 선택하세요',
+            hintText: '회원을 선택하세요',
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             constraints: BoxConstraints(maxWidth: 300),
           ),
@@ -197,41 +214,62 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
   }
 
   Widget _buildTimeSelector() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        DropdownButton<String>(
-          value: _selectedAmPm,
-          items:
-              ['오전', '오후'].map((value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _selectedAmPm = value);
-            }
-          },
-        ),
-        const SizedBox(width: 8),
-        DropdownButton<int>(
-          value: _selectedHour,
-          items:
-              List.generate(12, (index) => index + 1).map((value) {
-                return DropdownMenuItem<int>(
-                  value: value,
-                  child: Text('$value시'),
-                );
-              }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _selectedHour = value);
-            }
-          },
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            '시작 시간: ',
+            style: TextStyle(fontSize: 16),
+          ),
+          const SizedBox(width: 8),
+          DropdownButton<String>(
+            value: _selectedAmPm,
+            items: ['오전', '오후'].map((value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(
+                  value,
+                  style: const TextStyle(fontSize: 16),
+                ),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedAmPm = value);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          DropdownButton<int>(
+            value: _selectedHour,
+            items: List.generate(12, (index) => index + 1).map((value) {
+              return DropdownMenuItem<int>(
+                value: value,
+                child: Text(
+                  '$value',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              );
+            }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedHour = value);
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            '시',
+            style: TextStyle(fontSize: 16),
+          ),
+        ],
+      ),
     );
   }
 

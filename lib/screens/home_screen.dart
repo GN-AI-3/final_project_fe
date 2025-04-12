@@ -1,11 +1,11 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
 
-import '../services/fcm_service.dart';
 import 'calendar_screen.dart';
 import 'chat_screen.dart';
 import 'pt_contract_screen.dart';
+import 'member_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,33 +27,59 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final fcmToken = await FCMService.getFCMToken();
-      if (kDebugMode) {
-        print('FCM Token: $fcmToken');
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken == null) return;
+
+      final url = Uri.parse('http://localhost:8080/api/notification/send');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: '''
+        {
+          "token": "$fcmToken",
+          "title": "테스트 알림",
+          "body": "이것은 테스트 알림입니다."
+        }
+        ''',
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to send notification');
       }
 
-      final url = Uri.parse(
-        'http://10.0.2.2:8000/api/notification/user/1?fcm_token=$fcmToken',
-      );
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('알림이 성공적으로 전송되었습니다')));
-        }
-      } else {
-        throw Exception('알림 전송 실패: ${response.statusCode}');
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('알림'),
+            content: const Text('알림이 성공적으로 전송되었습니다'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
       }
     } catch (e) {
       setState(() {
         _notificationError = e.toString();
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('알림 전송 실패: $e')));
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('오류'),
+            content: Text('알림 전송 실패: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -71,12 +97,35 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xfff0f0f0),
       appBar: AppBar(
-        title: const Text('테스트'),
+        title: const Text(
+          '홈',
+          style: TextStyle(
+            color: Color(0xff3B3C40),
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: const Color(0xfff0f0f0),
-        elevation: 0,
         foregroundColor: Colors.black87,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xff3B3C40)),
         forceMaterialTransparency: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MemberProfileScreen(),
+                ),
+              );
+            },
+            tooltip: '프로필',
+          ),
+        ],
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -88,20 +137,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildFeatureCard(
                   icon: Icons.chat,
                   title: '채팅하기',
-                  description: '회원과 실시간 채팅',
+                  description: '챗봇과 실시간 채팅',
                   onTap: () => _navigateToScreen(const ChatScreen()),
                 ),
                 const SizedBox(height: 16),
                 _buildFeatureCard(
                   icon: Icons.calendar_today,
-                  title: 'PT 스케줄',
+                  title: '캘린더',
                   description: 'PT 일정 관리 및 조회',
                   onTap: () => _navigateToScreen(const CalendarScreen()),
                 ),
                 const SizedBox(height: 16),
                 _buildFeatureCard(
                   icon: Icons.description,
-                  title: 'PT 계약 관리',
+                  title: '계약 관리',
                   description: '회원 계약 정보 관리',
                   onTap: () => _navigateToScreen(const PtContractScreen()),
                 ),

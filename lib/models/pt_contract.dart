@@ -1,10 +1,5 @@
-import 'package:flutter/foundation.dart';
 
 class PtContract {
-  static const String _defaultName = '';
-  static const String _defaultPhone = '';
-  static const String _defaultStatus = 'UNKNOWN';
-
   final int memberId;
   final String memberName;
   final String phone;
@@ -15,34 +10,16 @@ class PtContract {
     required this.memberName,
     required this.phone,
     required this.contract,
-  }) {
-    _validateContract();
-  }
-
-  void _validateContract() {
-    if (memberId <= 0) {
-      throw ArgumentError('회원 ID는 0보다 커야 합니다.');
-    }
-    if (memberName.isEmpty) {
-      throw ArgumentError('회원 이름은 비어있을 수 없습니다.');
-    }
-    if (contract.remainingCount < 0) {
-      throw ArgumentError('남은 PT 횟수는 음수가 될 수 없습니다.');
-    }
-    if (contract.totalCount < contract.remainingCount) {
-      throw ArgumentError('총 PT 횟수는 남은 PT 횟수보다 작을 수 없습니다.');
-    }
-  }
+  });
 
   factory PtContract.fromJson(Map<String, dynamic> json) {
-    if (kDebugMode) {
-      print('PtContract fromJson: $json');
-    }
+    final memberName = json['memberName'] as String?;
+    final phone = json['phone'] as String?;
 
     return PtContract(
       memberId: json['memberId'] as int? ?? 0,
-      memberName: json['memberName'] as String? ?? _defaultName,
-      phone: json['phone'] as String? ?? _defaultPhone,
+      memberName: memberName ?? '알 수 없음',
+      phone: phone ?? '연락처 없음',
       contract: ContractInfo.fromJson(json['contract'] as Map<String, dynamic>),
     );
   }
@@ -90,24 +67,7 @@ class ContractInfo {
     required this.totalCount,
     required this.remainingCount,
     required this.status,
-  }) {
-    _validateContractInfo();
-  }
-
-  void _validateContractInfo() {
-    if (contractId <= 0) {
-      throw ArgumentError('계약 ID는 0보다 커야 합니다.');
-    }
-    if (totalCount <= 0) {
-      throw ArgumentError('총 PT 횟수는 0보다 커야 합니다.');
-    }
-    if (remainingCount < 0) {
-      throw ArgumentError('남은 PT 횟수는 음수가 될 수 없습니다.');
-    }
-    if (remainingCount > totalCount) {
-      throw ArgumentError('남은 PT 횟수는 총 PT 횟수를 초과할 수 없습니다.');
-    }
-  }
+  });
 
   factory ContractInfo.fromJson(Map<String, dynamic> json) {
     return ContractInfo(
