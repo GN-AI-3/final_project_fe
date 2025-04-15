@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/member.dart';
 import '../services/member_service.dart';
+import '../widgets/custom_dialog.dart';
 
 class MemberProfileScreen extends StatefulWidget {
   const MemberProfileScreen({Key? key}) : super(key: key);
@@ -66,19 +67,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
 
       if (!mounted) return;
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('오류'),
-          content: Text('회원 정보를 불러오는데 실패했습니다: $e'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
+      _showErrorDialog('회원 정보를 불러오는데 실패했습니다: $e');
     }
   }
 
@@ -121,19 +110,9 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
 
       if (!mounted) return;
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('성공'),
-          content: const Text('회원 정보가 성공적으로 수정되었습니다'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
+      _showConfirmDialog('성공', '회원 정보가 성공적으로 수정되었습니다', () {
+        Navigator.pop(context);
+      });
     } catch (e) {
       if (!mounted) return;
 
@@ -143,19 +122,7 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
 
       if (!mounted) return;
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('오류'),
-          content: Text('회원 정보 수정에 실패했습니다: $e'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
+      _showErrorDialog('회원 정보 수정에 실패했습니다: $e');
     }
   }
 
@@ -179,6 +146,45 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
         Navigator.pop(context); // 홈 화면 닫기
       }
     }
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => CustomDialog(
+        title: '오류',
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showConfirmDialog(String title, String message, VoidCallback onConfirm) {
+    showDialog(
+      context: context,
+      builder: (context) => CustomDialog(
+        title: title,
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+            },
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -253,14 +259,14 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                         maxLines: 3,
                       ),
                       const SizedBox(height: 24),
-                      ElevatedButton(
+                      TextButton(
                         onPressed: _isLoading ? null : _saveMemberInfo,
                         child: const Text('저장'),
                       ),
                       const SizedBox(height: 16),
-                      ElevatedButton(
+                      TextButton(
                         onPressed: _isLoading ? null : _logout,
-                        style: ElevatedButton.styleFrom(
+                        style: TextButton.styleFrom(
                           backgroundColor: const Color(0xFFFF0000),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),

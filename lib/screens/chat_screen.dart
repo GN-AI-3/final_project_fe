@@ -1,6 +1,9 @@
 // lib/screens/chat_screen.dart
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
@@ -12,6 +15,7 @@ class ChatConstants {
   static const String assistantRole = 'assistant';
   static const String errorMessage = '오류가 발생했습니다: ';
   static const String appTitle = '챗봇';
+  static const String chatHistoryKey = 'chat_history';
 
   static const double messagePadding = 8.0;
   static const double messageMargin = 4.0;
@@ -31,29 +35,103 @@ class ChatScreenState extends State<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final ChatService _chatService = ChatService();
   bool _isLoading = false;
+  SharedPreferences? _prefs;
+  bool _isPrefsInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _loadRecentMessages();
+    _initializePrefs();
   }
 
-  Future<void> _loadRecentMessages() async {
+  Future<void> _initializePrefs() async {
     try {
-      setState(() => _isLoading = true);
-      final recentMessages = await _chatService.getRecentMessages();
-      setState(() {
-        _messages.addAll(recentMessages);
-        _isLoading = false;
-      });
+      _prefs = await SharedPreferences.getInstance();
+      _isPrefsInitialized = true;
+      await _loadChatHistory();
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${ChatConstants.errorMessage}$e')),
-        );
+      if (kDebugMode) {
+        print('Error initializing SharedPreferences: $e');
       }
     }
+  }
+
+  Future<void> _loadChatHistory() async {
+    if (!_isPrefsInitialized || _prefs == null) return;
+
+    try {
+      final chatHistory = _prefs!.getString(ChatConstants.chatHistoryKey);
+      if (chatHistory != null) {
+        final List<dynamic> decodedMessages = json.decode(chatHistory);
+        if (mounted) {
+          setState(() {
+            _messages.clear();
+            _messages.addAll(
+              decodedMessages.map(
+                (msg) => ChatMessage(
+                  content: msg['content'] as String,
+                  role: msg['role'] as String,
+                ),
+              ),
+            );
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error loading chat history: $e');
+      }
+    }
+  }
+
+  Future<void> _saveChatHistory() async {
+    if (!_isPrefsInitialized || _prefs == null) return;
+
+    try {
+      final messagesJson = json.encode(
+        _messages.map((msg) => msg.toJson()).toList(),
+      );
+      await _prefs!.setString(ChatConstants.chatHistoryKey, messagesJson);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving chat history: $e');
+      }
+    }
+  }
+
+  void _showToast(String message) {
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder:
+          (context) => Positioned(
+            top: MediaQuery.of(context).size.height * 0.8,
+            left: MediaQuery.of(context).size.width * 0.1,
+            right: MediaQuery.of(context).size.width * 0.1,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+    );
+
+    overlay.insert(overlayEntry);
+    Future.delayed(const Duration(seconds: 2), () {
+      overlayEntry.remove();
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -69,8 +147,16 @@ class ChatScreenState extends State<ChatScreen> {
       _messages.add(
         ChatMessage(content: userMessage, role: ChatConstants.userRole),
       );
+      _messages.add(
+        ChatMessage(
+          content: '답변을 생성하는 중...',
+          role: ChatConstants.assistantRole,
+        ),
+      );
       _isLoading = true;
     });
+
+    await _saveChatHistory();
 
     try {
       if (kDebugMode) {
@@ -78,14 +164,16 @@ class ChatScreenState extends State<ChatScreen> {
       }
       final response = await _chatService.sendMessage(userMessage, []);
       if (kDebugMode) {
-        print('Received response from service: $response');
+        print('Received response from service: ${response.content}');
       }
 
       if (mounted) {
         setState(() {
+          _messages.removeLast(); // 로딩 메시지 제거
           _messages.add(response);
           _isLoading = false;
         });
+        await _saveChatHistory();
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -94,11 +182,10 @@ class ChatScreenState extends State<ChatScreen> {
       }
       if (mounted) {
         setState(() {
+          _messages.removeLast(); // 로딩 메시지 제거
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${ChatConstants.errorMessage}$e')),
-        );
+        _showToast('${ChatConstants.errorMessage}$e');
       }
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/custom_dialog.dart';
 
 import '../models/pt_contract.dart';
 import '../services/pt_contract_service.dart';
@@ -57,19 +58,7 @@ class PtContractScreenState extends State<PtContractScreen> {
       
       if (!mounted) return;
       
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('오류'),
-          content: Text('계약 목록을 불러오는데 실패했습니다: $e'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
+      _showErrorDialog('계약 목록을 불러오는데 실패했습니다: $e');
     }
   }
 
@@ -93,6 +82,22 @@ class PtContractScreenState extends State<PtContractScreen> {
         _loadContracts();
       }
     });
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => CustomDialog(
+        title: '오류',
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -191,7 +196,7 @@ class PtContractScreenState extends State<PtContractScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 128),
+        color: color.withValues(alpha: 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -210,7 +215,7 @@ class PtContractScreenState extends State<PtContractScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 128),
+        color: color.withValues(alpha: 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(

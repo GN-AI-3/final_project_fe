@@ -4,31 +4,32 @@ import 'package:flutter/material.dart';
 import '../models/pt_contract.dart';
 import '../services/pt_contract_service.dart';
 import '../services/schedule_service.dart';
+import 'custom_dialog.dart';
 
-class AddReservationDialog extends StatefulWidget {
+class AddScheduleDialog extends StatefulWidget {
   final ScheduleService scheduleService;
   final Function() onScheduleAdded;
 
-  const AddReservationDialog({
+  const AddScheduleDialog({
     super.key,
     required this.scheduleService,
     required this.onScheduleAdded,
   });
 
   @override
-  State<AddReservationDialog> createState() => _AddReservationDialogState();
+  State<AddScheduleDialog> createState() => _AddScheduleDialogState();
 }
 
-class _AddReservationDialogState extends State<AddReservationDialog> {
+class _AddScheduleDialogState extends State<AddScheduleDialog> {
   final _ptContractService = PtContractService();
   final _formKey = GlobalKey<FormState>();
+  final bool _isLoading = false;
 
   PtContract? _selectedContract;
   DateTime? _selectedDate;
   String _selectedAmPm = '오전';
   int _selectedHour = 9;
   List<PtContract> _contracts = [];
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -94,8 +95,8 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
     if (mounted) {
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('오류'),
+        builder: (context) => CustomDialog(
+          title: '오류',
           content: Text('$message: $error'),
           actions: [
             TextButton(
@@ -108,40 +109,50 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
     }
   }
 
-  Future<void> _createSchedule() async {
+  Future<void> _addSchedule() async {
     if (!_validateForm()) return;
 
-    setState(() => _isLoading = true);
-    final navigator = Navigator.of(context);
+    final startDateTime = DateTime(
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
+      _get24Hour(),
+    );
+
+    final endDateTime = startDateTime.add(const Duration(hours: 1));
 
     try {
-      final selectedDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _get24Hour(),
-      );
-      final endDateTime = selectedDateTime.add(const Duration(hours: 1));
-
-      final schedule = await widget.scheduleService.createSchedule(
+      await widget.scheduleService.createSchedule(
         ptContractId: _selectedContract!.contract.contractId,
-        startTime: selectedDateTime,
+        startTime: startDateTime,
         endTime: endDateTime,
       );
 
-      if (kDebugMode) {
-        print('일정 생성 성공: ${schedule.id}');
+      if (mounted) {
+        _showSuccessDialog();
       }
-
-      widget.onScheduleAdded();
-      navigator.pop();
     } catch (e) {
       _showError('일정 추가에 실패했습니다', e);
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
     }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => CustomDialog(
+        title: '일정 추가',
+        content: const Text('일정이 성공적으로 추가되었습니다.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              widget.onScheduleAdded();
+            },
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -282,7 +293,7 @@ class _AddReservationDialogState extends State<AddReservationDialog> {
           child: const Text('취소'),
         ),
         TextButton(
-          onPressed: _isLoading ? null : _createSchedule,
+          onPressed: _isLoading ? null : _addSchedule,
           child:
               _isLoading
                   ? const SizedBox(

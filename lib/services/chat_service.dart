@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/env.dart';
 import '../models/chat_message.dart';
+import '../screens/chat_screen.dart';
 
 class ChatService {
   static String get baseUrl => Env.getServerURL();
@@ -23,22 +24,15 @@ class ChatService {
         print('Request body: ${jsonEncode({'content': message})}');
       }
 
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/api/anonymous-chat/send'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_authToken',
-              'Accept': 'application/json',
-            },
-            body: jsonEncode({'content': message}),
-          )
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              throw Exception('서버 연결 시간이 초과되었습니다. 서버가 실행 중인지 확인해주세요.');
-            },
-          );
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/anonymous-chat/send'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'content': message}),
+      );
 
       if (kDebugMode) {
         print('Response status code: ${response.statusCode}');
@@ -47,6 +41,12 @@ class ChatService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        if (data['error'] != null) {
+          return ChatMessage(
+            content: data['error'],
+            role: ChatConstants.assistantRole,
+          );
+        }
         return ChatMessage.fromJson(data);
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
@@ -74,20 +74,13 @@ class ChatService {
         print('Fetching recent messages from: $baseUrl/api');
       }
 
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/recent'),
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $_authToken',
-            },
-          )
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw Exception('서버 연결 시간이 초과되었습니다.');
-            },
-          );
+      final response = await http.get(
+        Uri.parse('$baseUrl/recent'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+        },
+      );
 
       if (kDebugMode) {
         print('Response status code: ${response.statusCode}');

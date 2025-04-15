@@ -9,7 +9,7 @@ import '../models/schedule.dart';
 class ScheduleService {
   static String get baseUrl => Env.getServerURL();
   static const String _authToken =
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsImNhcmVlciI6Iu2XrOyKpO2KuOugiOydtOuEiCAxMOuFhCIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoidHJhaW5lcjEiLCJpZCI6MSwidXNlclR5cGUiOiJUUkFJTkVSIiwiY2VydGlmaWNhdGlvbnMiOlsi7IOd7Zmc7Iqk7Y-s7Lig7KeA64-E7IKsIDLquIkiLCLqsbTqsJXsmrTrj5nqtIDrpqzsgqwiXSwiZW1haWwiOiJ0cmFpbmVyQGV4YW1wbGUuY29tIiwic3BlY2lhbGl0aWVzIjpbIuyytOykkeqwkOufiSIsIuq3vOugpeqwle2ZlCIsIuyekOyEuOq1kOyglSJdLCJpYXQiOjE3NDQyNzI1NzYsImV4cCI6MTc0NDYzMjU3Nn0.9vRLk0KMPz6MKAbe3KZOpHTXkQqSkFWVgn_oH1Iz297Oq6IAXOeheeTAvXHVabFA';
+      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsImNhcmVlciI6Iu2XrOyKpO2KuOugiOydtOuEiCAxMOuFhCIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoidHJhaW5lcjEiLCJpZCI6MSwidXNlclR5cGUiOiJUUkFJTkVSIiwiY2VydGlmaWNhdGlvbnMiOlsi7IOd7Zmc7Iqk7Y-s7Lig7KeA64-E7IKsIDLquIkiLCLqsbTqsJXsmrTrj5nqtIDrpqzsgqwiXSwiZW1haWwiOiJ0cmFpbmVyQGV4YW1wbGUuY29tIiwic3BlY2lhbGl0aWVzIjpbIuyytOykkeqwkOufiSIsIuq3vOugpeqwle2ZlCIsIuyekOyEuOq1kOyglSJdLCJpYXQiOjE3NDQ2MDIzNjQsImV4cCI6MTc0NDk2MjM2NH0.EEfJFA_2oQZukZLRk8ymo6spR1I4SFh6-zh3jN0w9CqKBDuTgtZ_gitTmp7BJzYS';
 
   static const String _schedulesEndpoint = '/api/pt_schedules';
   static const Map<String, String> _defaultHeaders = {
@@ -35,18 +35,19 @@ class ScheduleService {
       if (kDebugMode) {
         print('일정 목록 응답: $data');
       }
-      
-      final schedules = data.map((json) {
-        if (kDebugMode) {
-          print('일정 데이터 파싱: $json');
-        }
-        return Schedule.fromJson(json);
-      }).toList();
-      
+
+      final schedules =
+          data.map((json) {
+            if (kDebugMode) {
+              print('일정 데이터 파싱: $json');
+            }
+            return Schedule.fromJson(json);
+          }).toList();
+
       if (kDebugMode) {
         print('파싱된 일정 목록: $schedules');
       }
-      
+
       return schedules;
     } catch (e) {
       _logError('일정 조회 중 오류 발생', e);
@@ -84,6 +85,47 @@ class ScheduleService {
       return Schedule.fromJson(json.decode(response.body));
     } catch (e) {
       _logError('일정 생성 중 오류 발생', e);
+      rethrow;
+    }
+  }
+
+  Future<Schedule> cancelSchedule(int scheduleId, {String reason = '트레이너와 협의'}) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/cancel'),
+        headers: _defaultHeaders,
+        body: json.encode({'reason': reason}),
+      );
+
+      _validateResponse(response);
+      return Schedule.fromJson(json.decode(response.body));
+    } catch (e) {
+      _logError('일정 취소 중 오류 발생', e);
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> changeSchedule({
+    required int scheduleId,
+    required DateTime startTime,
+    required DateTime endTime,
+    required String reason,
+  }) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/change'),
+        headers: _defaultHeaders,
+        body: json.encode({
+          'startTime': startTime.millisecondsSinceEpoch ~/ 1000,
+          'endTime': endTime.millisecondsSinceEpoch ~/ 1000,
+          'reason': reason,
+        }),
+      );
+
+      _validateResponse(response);
+      return json.decode(response.body);
+    } catch (e) {
+      _logError('일정 변경 중 오류 발생', e);
       rethrow;
     }
   }
@@ -139,9 +181,20 @@ class ScheduleService {
 
   void _validateResponse(http.Response response) {
     if (response.statusCode != 200) {
+      try {
+        final errorJson = jsonDecode(response.body);
+        if (errorJson is Map && errorJson.containsKey('message')) {
+          final message = errorJson['message'] as String;
+          final cleanMessage = message.replaceAll(RegExp(r'^[A-Za-z]+Exception:\s*'), '');
+          throw Exception(cleanMessage);
+        }
+      } catch (e) {
+        // JSON 파싱 실패 시 기본 에러 메시지 사용
+        throw Exception('API 요청 실패: ${response.statusCode}');
+      }
       throw Exception('API 요청 실패: ${response.statusCode}');
     }
-    
+
     try {
       jsonDecode(response.body);
     } catch (e) {
@@ -151,7 +204,12 @@ class ScheduleService {
 
   void _logError(String message, dynamic error) {
     if (kDebugMode) {
-      print('$message: $error');
+      if (error is Exception) {
+        final errorMessage = error.toString().replaceAll(RegExp(r'^Exception:\s*'), '');
+        print(errorMessage);
+      } else {
+        print('$message: $error');
+      }
     }
   }
 }

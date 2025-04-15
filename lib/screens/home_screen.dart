@@ -6,6 +6,7 @@ import 'calendar_screen.dart';
 import 'chat_screen.dart';
 import 'pt_contract_screen.dart';
 import 'member_profile_screen.dart';
+import '../widgets/custom_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,8 +51,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('알림'),
+          builder: (context) => CustomDialog(
+            title: '알림',
             content: const Text('알림이 성공적으로 전송되었습니다'),
             actions: [
               TextButton(
@@ -67,19 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _notificationError = e.toString();
       });
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('오류'),
-            content: Text('알림 전송 실패: $e'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('확인'),
-              ),
-            ],
-          ),
-        );
+        _showErrorDialog(e.toString());
       }
     } finally {
       if (mounted) {
@@ -92,6 +81,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _navigateToScreen(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => CustomDialog(
+        title: '오류',
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
