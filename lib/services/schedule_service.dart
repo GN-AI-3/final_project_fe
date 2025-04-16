@@ -32,21 +32,16 @@ class ScheduleService {
       _validateResponse(response);
 
       final List<dynamic> data = jsonDecode(response.body);
+
       if (kDebugMode) {
-        print('일정 목록 응답: $data');
+        print('startTime: $startTime');
+        print('endTime: $endTime');
       }
 
       final schedules =
           data.map((json) {
-            if (kDebugMode) {
-              print('일정 데이터 파싱: $json');
-            }
             return Schedule.fromJson(json);
           }).toList();
-
-      if (kDebugMode) {
-        print('파싱된 일정 목록: $schedules');
-      }
 
       return schedules;
     } catch (e) {
@@ -89,7 +84,10 @@ class ScheduleService {
     }
   }
 
-  Future<Schedule> cancelSchedule(int scheduleId, {String reason = '트레이너와 협의'}) async {
+  Future<Schedule> cancelSchedule(
+    int scheduleId, {
+    String reason = '트레이너와 협의',
+  }) async {
     try {
       final response = await http.patch(
         Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/cancel'),
@@ -126,6 +124,25 @@ class ScheduleService {
       return json.decode(response.body);
     } catch (e) {
       _logError('일정 변경 중 오류 발생', e);
+      rethrow;
+    }
+  }
+
+  Future<Schedule> noShowSchedule(
+    int scheduleId, {
+    String reason = '부재중',
+  }) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/no_show'),
+        headers: _defaultHeaders,
+        body: json.encode({'reason': reason}),
+      );
+
+      _validateResponse(response);
+      return Schedule.fromJson(json.decode(response.body));
+    } catch (e) {
+      _logError('불참 처리 중 오류 발생', e);
       rethrow;
     }
   }
@@ -185,7 +202,10 @@ class ScheduleService {
         final errorJson = jsonDecode(response.body);
         if (errorJson is Map && errorJson.containsKey('message')) {
           final message = errorJson['message'] as String;
-          final cleanMessage = message.replaceAll(RegExp(r'^[A-Za-z]+Exception:\s*'), '');
+          final cleanMessage = message.replaceAll(
+            RegExp(r'^[A-Za-z]+Exception:\s*'),
+            '',
+          );
           throw Exception(cleanMessage);
         }
       } catch (e) {
@@ -205,7 +225,10 @@ class ScheduleService {
   void _logError(String message, dynamic error) {
     if (kDebugMode) {
       if (error is Exception) {
-        final errorMessage = error.toString().replaceAll(RegExp(r'^Exception:\s*'), '');
+        final errorMessage = error.toString().replaceAll(
+          RegExp(r'^Exception:\s*'),
+          '',
+        );
         print(errorMessage);
       } else {
         print('$message: $error');

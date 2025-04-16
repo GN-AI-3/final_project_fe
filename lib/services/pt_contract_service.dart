@@ -68,4 +68,19 @@ class PtContractService {
       print('$message: $error');
     }
   }
+
+  Future<void> updateContractStatus(int contractId, String newStatus, String memo) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/pt_contracts/$contractId/status'),
+      headers: _defaultHeaders,
+      body: jsonEncode({
+        'status': newStatus,
+        'memo': memo,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update contract status');
+    }
+  }
 }

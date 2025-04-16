@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_dialog.dart';
 
 import '../models/pt_contract.dart';
 import '../services/pt_contract_service.dart';
+import '../widgets/custom_dialog.dart';
 
 class PtContractScreen extends StatefulWidget {
   const PtContractScreen({Key? key}) : super(key: key);
@@ -33,7 +33,7 @@ class PtContractScreenState extends State<PtContractScreen> {
 
   Future<void> _loadContracts() async {
     if (!mounted) return;
-    
+
     setState(() {
       _isLoading = true;
     });
@@ -42,22 +42,22 @@ class PtContractScreenState extends State<PtContractScreen> {
       final contracts = await _ptContractService.getContractMembers(
         _selectedStatus,
       );
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _contracts = contracts;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _isLoading = false;
       });
-      
+
       if (!mounted) return;
-      
+
       _showErrorDialog('계약 목록을 불러오는데 실패했습니다: $e');
     }
   }
@@ -87,17 +87,84 @@ class PtContractScreenState extends State<PtContractScreen> {
   void _showErrorDialog(String error) {
     showDialog(
       context: context,
+      builder:
+          (context) => CustomDialog(
+            title: '오류',
+            content: Text(error),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _showStatusChangeDialog(PtContract contract) {
+    showDialog(
+      context: context,
       builder: (context) => CustomDialog(
-        title: '오류',
-        content: Text(error),
+        title: '계약 상태 변경',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('변경할 상태를 선택하세요'),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: contract.contract.status,
+              items: const [
+                DropdownMenuItem(value: 'ACTIVE', child: Text('진행중')),
+                DropdownMenuItem(value: 'COMPLETED', child: Text('완료')),
+                DropdownMenuItem(value: 'CANCELLED', child: Text('취소')),
+                DropdownMenuItem(value: 'SUSPENDED', child: Text('일시중지')),
+                DropdownMenuItem(value: 'EXPIRED', child: Text('만료')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  _changeContractStatus(contract.contract.contractId, value);
+                  Navigator.pop(context);
+                }
+              },
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
+            child: const Text('취소'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _changeContractStatus(int contractId, String newStatus) async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _ptContractService.updateContractStatus(
+        contractId,
+        newStatus,
+        '변경 사유를 기록하세요', // memo 파라미터
+      );
+      
+      if (!mounted) return;
+      
+      _loadContracts();
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      _showErrorDialog('계약 상태 변경에 실패했습니다: $e');
+    }
   }
 
   @override
@@ -126,14 +193,15 @@ class PtContractScreenState extends State<PtContractScreen> {
           ),
         ],
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                itemCount: _contracts.length,
-                itemBuilder: (context, index) {
-                  final contract = _contracts[index];
-                  return Card(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              itemCount: _contracts.length,
+              itemBuilder: (context, index) {
+                final contract = _contracts[index];
+                return GestureDetector(
+                  onLongPress: () => _showStatusChangeDialog(contract),
+                  child: Card(
                     margin: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
@@ -186,9 +254,10 @@ class PtContractScreenState extends State<PtContractScreen> {
                       ),
                       isThreeLine: true,
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -201,8 +270,8 @@ class PtContractScreenState extends State<PtContractScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
+        style: const TextStyle(
+          color: Colors.black87,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -220,8 +289,8 @@ class PtContractScreenState extends State<PtContractScreen> {
       ),
       child: Text(
         '상태: $text',
-        style: TextStyle(
-          color: color,
+        style: const TextStyle(
+          color: Colors.black87,
           fontSize: 14,
           fontWeight: FontWeight.bold,
         ),

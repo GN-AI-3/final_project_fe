@@ -1,31 +1,24 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
-import 'package:flutter/foundation.dart';
 
-import '../models/schedule.dart';
 import '../models/meeting.dart';
+import '../models/schedule.dart';
 import '../services/schedule_service.dart';
 import '../widgets/add_schedule_dialog.dart';
 import '../widgets/change_schedule_dialog.dart';
 import '../widgets/custom_dialog.dart';
 import '../widgets/custom_toast.dart';
+import '../widgets/no_show_dialog.dart';
+import '../screens/pt_log_screen.dart';
 
-/// 캘린더 관련 상수 값들을 정의하는 클래스
 class CalendarConstants {
-  static const Map<String, String> statusEmojis = {
-    'scheduled': '📌',
-    'changed': '🔄',
-    'completed': '✅',
-    'cancelled': '❌',
-    'no_show': '⏰',
-  };
-
   static const Map<String, String> statusDescriptions = {
-    'scheduled': '[예약됨]',
-    'changed': '[변경됨]',
-    'completed': '[완료]',
-    'cancelled': '[취소됨]',
-    'no-show': '[노쇼]',
+    'scheduled': '[예약된 일정]',
+    'changed': '[변경된 일정]',
+    'completed': '[완료된 일정]',
+    'cancelled': '[취소된 일정]',
+    'no_show': '[불참]',
   };
 
   static const Map<CalendarView, IconData> viewIcons = {
@@ -43,7 +36,6 @@ class CalendarConstants {
   };
 }
 
-/// 캘린더 상태 관리를 담당하는 클래스
 class CalendarState {
   final CalendarController controller = CalendarController();
   CalendarView currentView = CalendarView.month;
@@ -109,8 +101,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _state.updateLoading(true);
 
     try {
-      final queryStartDate = startDate ?? DateTime.now();
-      final queryEndDate = endDate ?? DateTime.now();
+      final queryStartDate = startDate;
+      final queryEndDate = endDate;
 
       final schedules = await _scheduleService.getSchedules(
         startTime: queryStartDate,
@@ -144,9 +136,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Meeting _createMeeting(Schedule schedule) {
     final eventName =
-        ['changed', 'cancelled'].contains(schedule.status.toLowerCase())
-            ? '${_getStatusEmoji(schedule.status)} ${schedule.memberName} - ${schedule.reason}'
-            : '${_getStatusEmoji(schedule.status)} ${schedule.memberName} - PT ${schedule.currentPtCount}/${schedule.totalCount}';
+        ['changed', 'cancelled', 'no_show'].contains(schedule.status.toLowerCase())
+            ? '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 - ${schedule.reason}'
+            : '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)';
 
     return Meeting(
       eventName,
@@ -166,21 +158,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (error.contains('IllegalArgumentException')) {
       final startIndex = error.indexOf('IllegalArgumentException');
-      errorMessage = error.substring(startIndex + 'IllegalArgumentException'.length).trim();
+      errorMessage =
+          error
+              .substring(startIndex + 'IllegalArgumentException'.length)
+              .trim();
     }
 
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '오류',
-        content: Text(errorMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
+      builder:
+          (context) => CustomDialog(
+            title: '앗!',
+            content: Text(errorMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -207,81 +203,103 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showMeetingDetails(Meeting meeting) {
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: meeting.eventName,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('시작: ${_formatDateTime(meeting.from)}'),
-            Text('종료: ${_formatDateTime(meeting.to)}'),
-            if (meeting.description != null) Text('${meeting.description}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('일지 작성'),
+      builder:
+          (context) => CustomDialog(
+            title: meeting.eventName,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('시작 일시: ${_formatDateTime(meeting.from)}'),
+                Text('종료 일시: ${_formatDateTime(meeting.to)}'),
+                if (meeting.description != null) Text('${meeting.description}'),
+              ],
+            ),
+            actions: [
+              if (meeting.description?.contains('[완료된 일정]') ?? false)
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PtLogScreen(
+                          scheduleId: meeting.scheduleId!,
+                          meeting: meeting,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('일지 작성'),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('닫기'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('닫기'),
-          ),
-        ],
-      ),
     );
   }
 
   void _showMeetingOptions(Meeting meeting) {
     showModalBottomSheet(
       context: context,
-      builder:
-          (context) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.edit),
-                  title: const Text('일정 수정'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showChangeScheduleDialog(meeting);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cancel, color: Colors.red),
-                  title: const Text(
-                    '일정 취소',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showCancelDialog(meeting);
-                  },
-                ),
-              ],
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (meeting.description?.contains('[완료된 일정]') ?? false)
+              ListTile(
+                leading: const Icon(Icons.person_off),
+                title: const Text('불참 처리'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showNoShowDialog(meeting);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('일정 수정'),
+              onTap: () {
+                Navigator.pop(context);
+                _showChangeScheduleDialog(meeting);
+              },
             ),
-          ),
+            ListTile(
+              leading: const Icon(Icons.cancel, color: Colors.red),
+              title: const Text(
+                '일정 취소',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showCancelDialog(meeting);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _showChangeScheduleDialog(Meeting meeting) {
     showDialog(
       context: context,
-      builder: (context) => ChangeScheduleDialog(
-        scheduleService: _scheduleService,
-        meeting: meeting,
-        onScheduleChanged: () {
-          if (_state.lastStartDate != null && _state.lastEndDate != null) {
-            _loadMeetings(
-              startDate: _state.lastStartDate,
-              endDate: _state.lastEndDate,
-            );
-          } else {
-            _loadMeetings();
-          }
-        },
-      ),
+      builder:
+          (context) => ChangeScheduleDialog(
+            scheduleService: _scheduleService,
+            meeting: meeting,
+            onScheduleChanged: () {
+              if (_state.lastStartDate != null && _state.lastEndDate != null) {
+                _loadMeetings(
+                  startDate: _state.lastStartDate,
+                  endDate: _state.lastEndDate,
+                );
+              } else {
+                _loadMeetings();
+              }
+            },
+          ),
     );
   }
 
@@ -298,61 +316,79 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '일정 취소',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('${meeting.eventName} 일정을 취소하시겠습니까?'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: '취소 사유',
-                hintText: '취소 사유를 입력하세요',
-              ),
+      builder:
+          (context) => CustomDialog(
+            title: '일정 취소',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('${meeting.eventName} 일정을 취소하시겠습니까?'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    labelText: '취소 사유',
+                    hintText: '취소 사유를 입력하세요',
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    if (meeting.scheduleId == null) {
+                      throw Exception('오류');
+                    }
+                    await _scheduleService.cancelSchedule(
+                      meeting.scheduleId!,
+                      reason: reasonController.text,
+                    );
+                    if (mounted) {
+                      Navigator.pop(context);
+                      _loadMeetings(
+                        startDate: _state.lastStartDate,
+                        endDate: _state.lastEndDate,
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Navigator.pop(context);
+                      CustomToast.show(
+                        context: context,
+                        message: e.toString(),
+                        type: ToastType.error,
+                      );
+                    }
+                  }
+                },
+                child: const Text('확인'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              try {
-                if (meeting.scheduleId == null) {
-                  throw Exception('일정 ID가 없습니다.');
-                }
-                if (kDebugMode) {
-                  print('일정 취소 API 요청 - scheduleId: ${meeting.scheduleId}, reason: ${reasonController.text}');
-                }
-                await _scheduleService.cancelSchedule(
-                  meeting.scheduleId!,
-                  reason: reasonController.text,
-                );
-                if (mounted) {
-                  Navigator.pop(context);
-                  _loadMeetings(
-                    startDate: _state.lastStartDate,
-                    endDate: _state.lastEndDate,
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  Navigator.pop(context);
-                  CustomToast.show(
-                    context: context,
-                    message: e.toString(),
-                    type: ToastType.error,
-                  );
-                }
-              }
-            },
-            child: const Text('확인'),
-          ),
-        ],
+    );
+  }
+
+  void _showNoShowDialog(Meeting meeting) {
+    showDialog(
+      context: context,
+      builder: (context) => NoShowDialog(
+        meeting: meeting,
+        scheduleService: _scheduleService,
+        onNoShowProcessed: () {
+          if (_state.lastStartDate != null && _state.lastEndDate != null) {
+            _loadMeetings(
+              startDate: _state.lastStartDate,
+              endDate: _state.lastEndDate,
+            );
+          } else {
+            _loadMeetings();
+          }
+        },
       ),
     );
   }
@@ -382,10 +418,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         );
       }
     });
-  }
-
-  String _getStatusEmoji(String status) {
-    return CalendarConstants.statusEmojis[status.toLowerCase()] ?? '📌';
   }
 
   String _getStatusDescription(String status) {
@@ -419,21 +451,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (_state.isLoading) return;
 
     final visibleDates = details.visibleDates;
-    if (visibleDates.isNotEmpty) {
-      final startDate = visibleDates.first;
-      final endDate = DateTime(
-        visibleDates.last.year,
-        visibleDates.last.month,
-        visibleDates.last.day,
-        23,
-        59,
-        59,
-      );
+    if (visibleDates.isEmpty) return;
 
-      if (_state.lastStartDate != startDate || _state.lastEndDate != endDate) {
-        _state.updateLastDates(startDate, endDate);
-        _loadMeetings(startDate: startDate, endDate: endDate);
-      }
+    final startDate = visibleDates.first;
+    final endDate = DateTime(
+      visibleDates.last.year,
+      visibleDates.last.month,
+      visibleDates.last.day,
+      23,
+      59,
+      59,
+    );
+
+    final cachedStart = _state.lastStartDate;
+    final cachedEnd = _state.lastEndDate;
+
+    // 아직 아무 것도 캐시 안 됐거나, 새로 보이는 범위가 기존 범위 밖일 경우에만 새로 로딩
+    final needsLoading = cachedStart == null ||
+        cachedEnd == null ||
+        startDate.isBefore(cachedStart) ||
+        endDate.isAfter(cachedEnd);
+
+    if (needsLoading) {
+      _state.updateLastDates(startDate, endDate);
+      _loadMeetings(startDate: startDate, endDate: endDate);
     }
   }
 
