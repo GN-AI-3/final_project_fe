@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'calendar_screen.dart';
 import 'chat_screen.dart';
 import 'pt_contract_screen.dart';
 import 'member_profile_screen.dart';
 import '../widgets/custom_dialog.dart';
+import '../services/fcm_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final fcmToken = await FirebaseMessaging.instance.getToken();
+      final fcmToken = await FCMService.getFCMToken();
       if (fcmToken == null) return;
 
       final url = Uri.parse('http://localhost:8080/api/notification/send');

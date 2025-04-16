@@ -1,10 +1,13 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FCMService {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+  
+  static const String fcmTokenKey = 'fcm_token';
 
   static const AndroidNotificationChannel channel = AndroidNotificationChannel(
     'high_importance_channel',
@@ -38,6 +41,17 @@ class FCMService {
 
     // 포그라운드 메시지 수신 리스너
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    
+    // FCM 토큰 가져오기 및 저장
+    await refreshAndSaveFCMToken();
+    
+    // 토큰 갱신 이벤트 리스너 등록
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      saveFCMToken(token);
+      if (kDebugMode) {
+        print('FCM 토큰 갱신됨: $token');
+      }
+    });
   }
 
   static Future<void> _firebaseMessagingBackgroundHandler(
@@ -73,6 +87,52 @@ class FCMService {
   }
 
   static Future<String?> getFCMToken() async {
-    return await FirebaseMessaging.instance.getToken();
+    try {
+      // 먼저 저장된 토큰을 확인
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString(fcmTokenKey);
+      
+      // 저장된 토큰이 있으면 반환
+      if (savedToken != null && savedToken.isNotEmpty) {
+        return savedToken;
+      }
+      
+      // 없으면 새로 발급받아 저장 후 반환
+      return await refreshAndSaveFCMToken();
+    } catch (e) {
+      if (kDebugMode) {
+        print('FCM 토큰 가져오기 실패: $e');
+      }
+      return null;
+    }
+  }
+  
+  static Future<String?> refreshAndSaveFCMToken() async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) {
+        await saveFCMToken(token);
+        if (kDebugMode) {
+          print('FCM 토큰 발급 및 저장 완료: $token');
+        }
+      }
+      return token;
+    } catch (e) {
+      if (kDebugMode) {
+        print('FCM 토큰 발급 및 저장 실패: $e');
+      }
+      return null;
+    }
+  }
+  
+  static Future<void> saveFCMToken(String token) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(fcmTokenKey, token);
+    } catch (e) {
+      if (kDebugMode) {
+        print('FCM 토큰 저장 실패: $e');
+      }
+    }
   }
 }
