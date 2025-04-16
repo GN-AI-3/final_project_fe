@@ -28,11 +28,12 @@ class PtContractService {
       _validateResponse(response);
 
       final List<dynamic> jsonList = json.decode(response.body);
-      
-      final contracts = jsonList.map((json) {
-        return PtContract.fromJson(json);
-      }).toList();
-      
+
+      final contracts =
+          jsonList.map((json) {
+            return PtContract.fromJson(json);
+          }).toList();
+
       return contracts;
     } catch (e) {
       _logError('PT 계약 회원 목록 조회 중 오류 발생', e);
@@ -52,7 +53,7 @@ class PtContractService {
     if (response.statusCode != 200) {
       throw Exception('API 요청 실패: ${response.statusCode}');
     }
-    
+
     try {
       final json = jsonDecode(response.body);
       if (json is! List) {
@@ -69,14 +70,15 @@ class PtContractService {
     }
   }
 
-  Future<void> updateContractStatus(int contractId, String newStatus, String memo) async {
+  Future<void> updateContractStatus(
+    int contractId,
+    String newStatus,
+    String memo,
+  ) async {
     final response = await http.put(
       Uri.parse('$baseUrl/api/pt_contracts/$contractId/status'),
       headers: _defaultHeaders,
-      body: jsonEncode({
-        'status': newStatus,
-        'memo': memo,
-      }),
+      body: jsonEncode({'status': newStatus, 'memo': memo}),
     );
 
     if (response.statusCode != 200) {

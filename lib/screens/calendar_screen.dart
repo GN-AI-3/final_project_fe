@@ -4,13 +4,13 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import '../models/meeting.dart';
 import '../models/schedule.dart';
+import '../screens/pt_log_screen.dart';
 import '../services/schedule_service.dart';
 import '../widgets/add_schedule_dialog.dart';
 import '../widgets/change_schedule_dialog.dart';
 import '../widgets/custom_dialog.dart';
 import '../widgets/custom_toast.dart';
 import '../widgets/no_show_dialog.dart';
-import '../screens/pt_log_screen.dart';
 
 class CalendarConstants {
   static const Map<String, String> statusDescriptions = {
@@ -136,7 +136,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Meeting _createMeeting(Schedule schedule) {
     final eventName =
-        ['changed', 'cancelled', 'no_show'].contains(schedule.status.toLowerCase())
+        [
+              'changed',
+              'cancelled',
+              'no_show',
+            ].contains(schedule.status.toLowerCase())
             ? '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 - ${schedule.reason}'
             : '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)';
 
@@ -223,10 +227,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PtLogScreen(
-                          scheduleId: meeting.scheduleId!,
-                          meeting: meeting,
-                        ),
+                        builder:
+                            (context) => PtLogScreen(
+                              scheduleId: meeting.scheduleId!,
+                              meeting: meeting,
+                            ),
                       ),
                     );
                   },
@@ -244,41 +249,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showMeetingOptions(Meeting meeting) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (meeting.description?.contains('[완료된 일정]') ?? false)
-              ListTile(
-                leading: const Icon(Icons.person_off),
-                title: const Text('불참 처리'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showNoShowDialog(meeting);
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('일정 수정'),
-              onTap: () {
-                Navigator.pop(context);
-                _showChangeScheduleDialog(meeting);
-              },
+      builder:
+          (context) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (meeting.description?.contains('[완료된 일정]') ?? false)
+                  ListTile(
+                    leading: const Icon(Icons.person_off),
+                    title: const Text('불참 처리'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showNoShowDialog(meeting);
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('일정 수정'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showChangeScheduleDialog(meeting);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.cancel, color: Colors.red),
+                  title: const Text(
+                    '일정 취소',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showCancelDialog(meeting);
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.cancel, color: Colors.red),
-              title: const Text(
-                '일정 취소',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _showCancelDialog(meeting);
-              },
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -376,20 +382,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showNoShowDialog(Meeting meeting) {
     showDialog(
       context: context,
-      builder: (context) => NoShowDialog(
-        meeting: meeting,
-        scheduleService: _scheduleService,
-        onNoShowProcessed: () {
-          if (_state.lastStartDate != null && _state.lastEndDate != null) {
-            _loadMeetings(
-              startDate: _state.lastStartDate,
-              endDate: _state.lastEndDate,
-            );
-          } else {
-            _loadMeetings();
-          }
-        },
-      ),
+      builder:
+          (context) => NoShowDialog(
+            meeting: meeting,
+            scheduleService: _scheduleService,
+            onNoShowProcessed: () {
+              if (_state.lastStartDate != null && _state.lastEndDate != null) {
+                _loadMeetings(
+                  startDate: _state.lastStartDate,
+                  endDate: _state.lastEndDate,
+                );
+              } else {
+                _loadMeetings();
+              }
+            },
+          ),
     );
   }
 
@@ -467,7 +474,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final cachedEnd = _state.lastEndDate;
 
     // 아직 아무 것도 캐시 안 됐거나, 새로 보이는 범위가 기존 범위 밖일 경우에만 새로 로딩
-    final needsLoading = cachedStart == null ||
+    final needsLoading =
+        cachedStart == null ||
         cachedEnd == null ||
         startDate.isBefore(cachedStart) ||
         endDate.isAfter(cachedEnd);

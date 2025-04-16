@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum ToastType {
-  success,
-  error,
-  warning,
-  info,
-}
+enum ToastType { success, error, warning, info }
 
 class CustomToast {
   static void show({
@@ -16,16 +11,17 @@ class CustomToast {
   }) {
     late final OverlayEntry overlay;
     overlay = OverlayEntry(
-      builder: (context) => Positioned(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 16,
-        right: 16,
-        child: _ToastWidget(
-          message: message,
-          type: type,
-          onDismiss: () => overlay.remove(),
-        ),
-      ),
+      builder:
+          (context) => Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            right: 16,
+            child: _ToastWidget(
+              message: message,
+              type: type,
+              onDismiss: () => overlay.remove(),
+            ),
+          ),
     );
 
     Overlay.of(context).insert(overlay);
@@ -95,27 +91,17 @@ class _ToastWidget extends StatelessWidget {
                 color: _getColor().withValues(alpha: 1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                _getIcon(),
-                color: _getColor(),
-                size: 20,
-              ),
+              child: Icon(_getIcon(), color: _getColor(), size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.black, fontSize: 14),
               ),
             ),
             const SizedBox(width: 8),
-            TextButton(
-              onPressed: onDismiss,
-              child: const Text('확인'),
-            ),
+            TextButton(onPressed: onDismiss, child: const Text('확인')),
           ],
         ),
       ),

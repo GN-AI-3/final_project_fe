@@ -88,7 +88,9 @@ class PtLogScreenState extends State<PtLogScreen> {
     if (!_isPrefsInitialized || _prefs == null) return;
 
     try {
-      final logHistory = _prefs!.getString('${PtLogConstants.logHistoryKey}_${widget.scheduleId}');
+      final logHistory = _prefs!.getString(
+        '${PtLogConstants.logHistoryKey}_${widget.scheduleId}',
+      );
       if (logHistory != null) {
         final List<dynamic> decodedMessages = json.decode(logHistory);
         if (mounted) {
@@ -119,7 +121,10 @@ class PtLogScreenState extends State<PtLogScreen> {
       final messagesJson = json.encode(
         _messages.map((msg) => msg.toJson()).toList(),
       );
-      await _prefs!.setString('${PtLogConstants.logHistoryKey}_${widget.scheduleId}', messagesJson);
+      await _prefs!.setString(
+        '${PtLogConstants.logHistoryKey}_${widget.scheduleId}',
+        messagesJson,
+      );
     } catch (e) {
       if (kDebugMode) {
         print('Error saving log history: $e');
@@ -131,7 +136,9 @@ class PtLogScreenState extends State<PtLogScreen> {
     if (!_isPrefsInitialized || _prefs == null) return;
 
     try {
-      final draftMessage = _prefs!.getString('${PtLogConstants.logHistoryKey}_${widget.scheduleId}_draft');
+      final draftMessage = _prefs!.getString(
+        '${PtLogConstants.logHistoryKey}_${widget.scheduleId}_draft',
+      );
       if (draftMessage != null && mounted) {
         _messageController.text = draftMessage;
       }
@@ -265,10 +272,7 @@ class PtLogScreenState extends State<PtLogScreen> {
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 border: Border(
-                  bottom: BorderSide(
-                    color: Colors.grey[300]!,
-                    width: 1,
-                  ),
+                  bottom: BorderSide(color: Colors.grey[300]!, width: 1),
                 ),
               ),
               child: Column(
@@ -325,4 +329,4 @@ class PtLogScreenState extends State<PtLogScreen> {
     _messageController.dispose();
     super.dispose();
   }
-} 
+}

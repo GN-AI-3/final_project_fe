@@ -1,4 +1,3 @@
-
 /// Schedule 관련 상수 값들을 정의하는 클래스
 class ScheduleConstants {
   static const String defaultStatus = 'SCHEDULED';
@@ -56,18 +55,22 @@ class Schedule {
       endTime: times.end,
       status: json['status'] ?? ScheduleConstants.defaultStatus,
       reason: json['reason'] ?? ScheduleConstants.defaultReason,
-      reservationId: json['reservationId'] ?? ScheduleConstants.defaultReservationId,
+      reservationId:
+          json['reservationId'] ?? ScheduleConstants.defaultReservationId,
       trainerId: json['trainerId'] ?? 0,
       trainerName: json['trainerName'] ?? ScheduleConstants.defaultName,
       memberId: json['memberId'] ?? 0,
       memberName: json['memberName'] ?? ScheduleConstants.defaultName,
       currentPtCount: json['currentPtCount'] ?? ScheduleConstants.defaultCount,
       totalCount: json['totalCount'] ?? ScheduleConstants.defaultCount,
-      remainingPtCount: json['remainingPtCount'] ?? ScheduleConstants.defaultCount,
+      remainingPtCount:
+          json['remainingPtCount'] ?? ScheduleConstants.defaultCount,
     );
   }
 
-  static ({DateTime start, DateTime end}) _parseAndSortTimes(Map<String, dynamic> json) {
+  static ({DateTime start, DateTime end}) _parseAndSortTimes(
+    Map<String, dynamic> json,
+  ) {
     final startTime = DateTime.fromMillisecondsSinceEpoch(
       (json['startTime'] ?? 0) * 1000,
     );
@@ -129,6 +132,7 @@ class Schedule {
   );
 
   @override
-  String toString() => 'Schedule(id: $id, memberName: $memberName, '
+  String toString() =>
+      'Schedule(id: $id, memberName: $memberName, '
       'startTime: $startTime, endTime: $endTime, status: $status)';
 }

@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 import '../models/chat_message.dart';
 
@@ -9,7 +6,10 @@ class PtLogsService {
   static const String _baseUrl = 'http://localhost:8080/api/v1';
   static const String _endpoint = '/chat/completions';
 
-  Future<ChatMessage> sendMessage(String message, List<ChatMessage> history) async {
+  Future<ChatMessage> sendMessage(
+    String message,
+    List<ChatMessage> history,
+  ) async {
     try {
       if (kDebugMode) {
         print('Sending message to endpoint: $_baseUrl$_endpoint');
@@ -18,10 +18,7 @@ class PtLogsService {
       }
 
       // 실제 API 호출을 비활성화하고 더미 응답 반환
-      return ChatMessage(
-        content: 'PT 일지가 저장되었습니다.',
-        role: 'assistant',
-      );
+      return ChatMessage(content: 'PT 일지가 저장되었습니다.', role: 'assistant');
 
       // 실제 API 호출 코드 (현재는 비활성화)
       /*
@@ -55,4 +52,4 @@ class PtLogsService {
       rethrow;
     }
   }
-} 
+}

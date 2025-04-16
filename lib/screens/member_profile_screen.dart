@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../models/member.dart';
 import '../services/member_service.dart';
@@ -151,52 +151,56 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
   void _showErrorDialog(String error) {
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '오류',
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
+      builder:
+          (context) => CustomDialog(
+            title: '오류',
+            content: Text(error),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
-  void _showConfirmDialog(String title, String message, VoidCallback onConfirm) {
+  void _showConfirmDialog(
+    String title,
+    String message,
+    VoidCallback onConfirm,
+  ) {
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: title,
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+      builder:
+          (context) => CustomDialog(
+            title: title,
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onConfirm();
+                },
+                child: const Text('확인'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              onConfirm();
-            },
-            child: const Text('확인'),
-          ),
-        ],
-      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('프로필'),
-        forceMaterialTransparency: true,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      appBar: AppBar(title: const Text('프로필'), forceMaterialTransparency: true),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Form(
                   key: _formKey,

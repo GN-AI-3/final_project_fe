@@ -27,9 +27,9 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('URL을 열 수 없습니다: $url')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('URL을 열 수 없습니다: $url')));
       }
     }
   }
@@ -53,30 +53,31 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
 
     for (final match in matches) {
       if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: content.substring(lastEnd, match.start),
-          style: baseStyle,
-        ));
+        spans.add(
+          TextSpan(
+            text: content.substring(lastEnd, match.start),
+            style: baseStyle,
+          ),
+        );
       }
 
       final url = match.group(0)!;
-      spans.add(TextSpan(
-        text: url,
-        style: baseStyle.copyWith(
-          color: isUser ? Colors.white : Colors.blue,
-          decoration: TextDecoration.underline,
+      spans.add(
+        TextSpan(
+          text: url,
+          style: baseStyle.copyWith(
+            color: isUser ? Colors.white : Colors.blue,
+            decoration: TextDecoration.underline,
+          ),
+          recognizer: TapGestureRecognizer()..onTap = () => _launchUrl(url),
         ),
-        recognizer: TapGestureRecognizer()..onTap = () => _launchUrl(url),
-      ));
+      );
 
       lastEnd = match.end;
     }
 
     if (lastEnd < content.length) {
-      spans.add(TextSpan(
-        text: content.substring(lastEnd),
-        style: baseStyle,
-      ));
+      spans.add(TextSpan(text: content.substring(lastEnd), style: baseStyle));
     }
 
     return RichText(
@@ -114,9 +115,8 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                 vertical: 10.0,
               ),
               decoration: BoxDecoration(
-                color: isUser
-                    ? const Color(0xff2746f8)
-                    : const Color(0xffe8e8e8),
+                color:
+                    isUser ? const Color(0xff2746f8) : const Color(0xffe8e8e8),
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: _buildMessageContent(widget.message.content),

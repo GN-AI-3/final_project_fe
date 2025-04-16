@@ -51,7 +51,7 @@ class _NoShowDialogState extends State<NoShowDialog> {
         widget.meeting.scheduleId!,
         reason: _reasonController.text,
       );
-      
+
       if (mounted) {
         Navigator.pop(context);
         widget.onNoShowProcessed();

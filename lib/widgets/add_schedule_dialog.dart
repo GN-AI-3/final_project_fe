@@ -72,16 +72,17 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
     if (_selectedContract == null) {
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('알림'),
-          content: const Text('PT 회원을 선택해주세요'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
+        builder:
+            (context) => AlertDialog(
+              title: const Text('알림'),
+              content: const Text('PT 회원을 선택해주세요'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
       return false;
     }
@@ -95,16 +96,17 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
     if (mounted) {
       showDialog(
         context: context,
-        builder: (context) => CustomDialog(
-          title: '오류',
-          content: Text('$message: $error'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
+        builder:
+            (context) => CustomDialog(
+              title: '오류',
+              content: Text('$message: $error'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     }
   }
@@ -139,19 +141,20 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
   void _showSuccessDialog() {
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '일정 추가',
-        content: const Text('일정이 성공적으로 추가되었습니다.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              widget.onScheduleAdded();
-            },
-            child: const Text('확인'),
+      builder:
+          (context) => CustomDialog(
+            title: '일정 추가',
+            content: const Text('일정이 성공적으로 추가되었습니다.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onScheduleAdded();
+                },
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -234,22 +237,17 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            '시작 시간: ',
-            style: TextStyle(fontSize: 16),
-          ),
+          const Text('시작 시간: ', style: TextStyle(fontSize: 16)),
           const SizedBox(width: 8),
           DropdownButton<String>(
             value: _selectedAmPm,
-            items: ['오전', '오후'].map((value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(
-                  value,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              );
-            }).toList(),
+            items:
+                ['오전', '오후'].map((value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value, style: const TextStyle(fontSize: 16)),
+                  );
+                }).toList(),
             onChanged: (value) {
               if (value != null) {
                 setState(() => _selectedAmPm = value);
@@ -259,15 +257,13 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
           const SizedBox(width: 8),
           DropdownButton<int>(
             value: _selectedHour,
-            items: List.generate(12, (index) => index + 1).map((value) {
-              return DropdownMenuItem<int>(
-                value: value,
-                child: Text(
-                  '$value',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              );
-            }).toList(),
+            items:
+                List.generate(12, (index) => index + 1).map((value) {
+                  return DropdownMenuItem<int>(
+                    value: value,
+                    child: Text('$value', style: const TextStyle(fontSize: 16)),
+                  );
+                }).toList(),
             onChanged: (value) {
               if (value != null) {
                 setState(() => _selectedHour = value);
@@ -275,10 +271,7 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
             },
           ),
           const SizedBox(width: 8),
-          const Text(
-            '시',
-            style: TextStyle(fontSize: 16),
-          ),
+          const Text('시', style: TextStyle(fontSize: 16)),
         ],
       ),
     );

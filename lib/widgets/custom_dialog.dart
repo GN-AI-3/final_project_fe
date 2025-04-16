@@ -15,9 +15,7 @@ class CustomDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 0,
       backgroundColor: Colors.transparent,
       child: Container(
@@ -72,12 +70,13 @@ class CustomDialog extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children: actions.map<Widget>((action) {
-                    if (action is TextButton) {
-                      return action;
-                    }
-                    return action;
-                  }).toList(),
+                  children:
+                      actions.map<Widget>((action) {
+                        if (action is TextButton) {
+                          return action;
+                        }
+                        return action;
+                      }).toList(),
                 ),
               ),
           ],
@@ -85,4 +84,4 @@ class CustomDialog extends StatelessWidget {
       ),
     );
   }
-} 
+}

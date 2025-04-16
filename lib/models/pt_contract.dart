@@ -1,4 +1,3 @@
-
 class PtContract {
   final int memberId;
   final String memberName;

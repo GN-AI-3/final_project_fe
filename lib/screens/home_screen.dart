@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../services/fcm_service.dart';
+import '../widgets/custom_dialog.dart';
 import 'calendar_screen.dart';
 import 'chat_screen.dart';
-import 'pt_contract_screen.dart';
 import 'member_profile_screen.dart';
-import '../widgets/custom_dialog.dart';
-import '../services/fcm_service.dart';
+import 'pt_contract_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,16 +51,17 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         showDialog(
           context: context,
-          builder: (context) => CustomDialog(
-            title: '알림',
-            content: const Text('알림이 성공적으로 전송되었습니다'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('확인'),
+          builder:
+              (context) => CustomDialog(
+                title: '알림',
+                content: const Text('알림이 성공적으로 전송되었습니다'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('확인'),
+                  ),
+                ],
               ),
-            ],
-          ),
         );
       }
     } catch (e) {
@@ -86,16 +87,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showErrorDialog(String error) {
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '오류',
-        content: Text(error),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
+      builder:
+          (context) => CustomDialog(
+            title: '오류',
+            content: Text(error),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
