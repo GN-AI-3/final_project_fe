@@ -108,94 +108,95 @@ class PtContractScreenState extends State<PtContractScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '계약 상태 변경',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${contract.memberName} 회원님의 계약 상태 변경',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '현재 상태: ${_getStatusInfo(contract.status).$2}',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
-            ),
-            const SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: allowedStatuses.map((status) {
-                final (color, text) = _getStatusInfo(status);
-                return SizedBox(
-                  width: 120,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showConfirmDialog(contract.id, status, text);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: status == 'SUSPENDED' ? Colors.transparent : color.withValues(alpha: 10),
-                      foregroundColor: color.withValues(alpha: 1),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: color.withValues(alpha: 1),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+      builder:
+          (context) => CustomDialog(
+            title: '계약 상태 변경',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 20),
+                Text(
+                  '${contract.memberName} 회원님의 계약 상태 변경',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '현재 상태: ${_getStatusInfo(contract.status).$2}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children:
+                      allowedStatuses.map((status) {
+                        final (color, text) = _getStatusInfo(status);
+                        return SizedBox(
+                          width: 120,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showConfirmDialog(contract.id, status, text);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: color,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: color, width: 2),
+                              ),
+                            ),
+                            child: Text(
+                              text,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('닫기'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('닫기'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showConfirmDialog(int contractId, String newStatus, String statusText) {
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '상태 변경 확인',
-        content: Text(
-          '상태를 $statusText${KoreanPostposition.getPostposition(statusText)} 변경하시겠습니까?',
-          style: const TextStyle(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+      builder:
+          (context) => CustomDialog(
+            title: '상태 변경 확인',
+            content: Text(
+              '상태를 $statusText${KoreanPostposition.getPostposition(statusText)} 변경하시겠습니까?',
+              style: const TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _changeContractStatus(contractId, newStatus);
+                },
+                child: const Text('확인'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _changeContractStatus(contractId, newStatus);
-            },
-            child: const Text('확인'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -274,7 +275,9 @@ class PtContractScreenState extends State<PtContractScreen> {
                   final contract = _contracts[index];
                   return GestureDetector(
                     onLongPress: () {
-                      final allowedStatuses = _getAllowedStatuses(contract.status);
+                      final allowedStatuses = _getAllowedStatuses(
+                        contract.status,
+                      );
                       if (allowedStatuses.length > 1) {
                         _showStatusChangeDialog(contract);
                       }
@@ -296,9 +299,8 @@ class PtContractScreenState extends State<PtContractScreen> {
                             child: Row(
                               children: [
                                 CircleAvatar(
-                                  backgroundColor: _getStatusColor(
-                                    contract.status,
-                                  ),
+                                  backgroundColor:
+                                      _getStatusInfo(contract.status).$1,
                                   child: Text(
                                     contract.memberName[0],
                                     style: const TextStyle(
@@ -364,7 +366,7 @@ class PtContractScreenState extends State<PtContractScreen> {
                                   children: [
                                     Expanded(
                                       child: _buildProgressCard(
-                                        '총 PT',
+                                        '총 횟수',
                                         '${contract.totalCount}회',
                                         secondaryColor2,
                                       ),
@@ -372,7 +374,7 @@ class PtContractScreenState extends State<PtContractScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: _buildProgressCard(
-                                        '사용 PT',
+                                        '사용 횟수',
                                         '${contract.usedCount}회',
                                         secondaryColor3,
                                       ),
@@ -380,7 +382,7 @@ class PtContractScreenState extends State<PtContractScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: _buildProgressCard(
-                                        '남은 PT',
+                                        '남은 횟수',
                                         '${contract.remainingCount}회',
                                         secondaryColor4,
                                       ),
@@ -427,7 +429,7 @@ class PtContractScreenState extends State<PtContractScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 10),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withValues(alpha: 10), width: 1),
       ),
@@ -437,7 +439,7 @@ class PtContractScreenState extends State<PtContractScreen> {
           Text(
             title,
             style: TextStyle(
-              color: color.withValues(alpha: 1),
+              color: color,
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -446,7 +448,7 @@ class PtContractScreenState extends State<PtContractScreen> {
           Text(
             value,
             style: TextStyle(
-              color: color.withValues(alpha: 1),
+              color: color,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -465,41 +467,19 @@ class PtContractScreenState extends State<PtContractScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: status == 'SUSPENDED' ? Colors.transparent : color.withValues(alpha: 10),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: status == 'SUSPENDED' 
-          ? null 
-          : Border.all(
-              color: color.withValues(alpha: 10),
-              width: 1,
-            ),
+        border: Border.all(color: color, width: 1),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: color.withValues(alpha: 1),
+          color: color,
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'ACTIVE':
-        return primaryColor;
-      case 'COMPLETED':
-        return const Color(0xff4CAF50); // 녹색
-      case 'CANCELLED':
-        return Colors.red;
-      case 'SUSPENDED':
-        return const Color(0xffFF9800); // 주황색
-      case 'EXPIRED':
-        return textColor;
-      default:
-        return textColor;
-    }
   }
 
   (Color, String) _getStatusInfo(String status) {
@@ -524,24 +504,24 @@ class GlowingBorderPainter extends CustomPainter {
   final Color color;
   final double progress;
 
-  GlowingBorderPainter({
-    required this.color,
-    required this.progress,
-  });
+  GlowingBorderPainter({required this.color, required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    final paint =
+        Paint()
+          ..color = color.withValues(alpha: 0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
-    final path = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, 0, size.width, size.height),
-        const Radius.circular(12),
-      ));
+    final path =
+        Path()..addRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(0, 0, size.width, size.height),
+            const Radius.circular(12),
+          ),
+        );
 
     final dashPattern = [4.0, 4.0];
     final dashLength = dashPattern.reduce((a, b) => a + b);
@@ -553,7 +533,9 @@ class GlowingBorderPainter extends CustomPainter {
 
     while (currentLength < totalLength) {
       final isDash = (currentLength / dashLength).floor() % 2 == 0;
-      final dashSize = dashPattern[(currentLength / dashLength).floor() % dashPattern.length];
+      final dashSize =
+          dashPattern[(currentLength / dashLength).floor() %
+              dashPattern.length];
       final nextLength = currentLength + dashSize;
 
       if (isDash) {

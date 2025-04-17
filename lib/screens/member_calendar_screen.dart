@@ -3,22 +3,6 @@ import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import '../models/meeting.dart';
 
-class MemberCalendarConstants {
-  static const Map<CalendarView, IconData> viewIcons = {
-    CalendarView.day: Icons.view_day,
-    CalendarView.week: Icons.view_week,
-    CalendarView.month: Icons.calendar_month,
-    CalendarView.schedule: Icons.schedule,
-  };
-
-  static const Map<CalendarView, CalendarView> nextView = {
-    CalendarView.day: CalendarView.week,
-    CalendarView.week: CalendarView.month,
-    CalendarView.month: CalendarView.schedule,
-    CalendarView.schedule: CalendarView.day,
-  };
-}
-
 class MemberCalendarState {
   final CalendarController controller = CalendarController();
   CalendarView currentView = CalendarView.month;
@@ -52,39 +36,17 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     _state.updateFilteredMeetings([]);
   }
 
-  void _changeView() {
-    setState(() {
-      _state.updateView(
-        MemberCalendarConstants.nextView[_state.currentView] ??
-            CalendarView.month,
-      );
-    });
-  }
-
-  void _handleViewChanged(ViewChangedDetails details) {
-    // 아무것도 하지 않음
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text('캘린더'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              MemberCalendarConstants.viewIcons[_state.currentView] ??
-                  Icons.calendar_month,
-            ),
-            onPressed: _changeView,
-          ),
-        ],
         forceMaterialTransparency: true,
       ),
       body: SfCalendar(
         controller: _state.controller,
-        view: _state.currentView,
+        view: CalendarView.month,
         headerHeight: 50,
         headerStyle: const CalendarHeaderStyle(
           textAlign: TextAlign.start,
@@ -134,7 +96,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         ),
         showDatePickerButton: true,
         showTodayButton: true,
-        onViewChanged: _handleViewChanged,
       ),
     );
   }

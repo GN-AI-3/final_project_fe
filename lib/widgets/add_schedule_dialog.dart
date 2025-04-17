@@ -23,7 +23,7 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
   PtContract? _selectedContract;
   DateTime? _selectedDate;
   TimeOfDay _selectedTime = TimeOfDay.now();
-  bool _isAm = true;
+  final bool _isAm = true;
 
   @override
   void initState() {
@@ -207,36 +207,68 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
     return Row(
       children: [
         const Text('시간: '),
-        TextButton(
-          onPressed: () async {
-            final time = await showTimePicker(
-              context: context,
-              initialTime: _selectedTime,
-            );
-            if (time != null) {
-              setState(() => _selectedTime = time);
-            }
-          },
-          child: Text(
-            '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+        _buildTimeSelector(
+          'AM',
+          _selectedTime,
+          (value) => setState(() => _selectedTime = value),
+        ),
+        _buildTimeSelector(
+          'PM',
+          _selectedTime,
+          (value) => setState(() => _selectedTime = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimeSelector(
+    String label,
+    TimeOfDay? time,
+    Function(TimeOfDay) onTimeSelected,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(width: 8),
-        Row(
-          children: [
-            Radio<bool>(
-              value: true,
-              groupValue: _isAm,
-              onChanged: (value) => setState(() => _isAm = value!),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: () async {
+            final selectedTime = await showTimePicker(
+              context: context,
+              initialTime: time ?? TimeOfDay.now(),
+            );
+            if (selectedTime != null) {
+              onTimeSelected(selectedTime);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const Text('AM'),
-            Radio<bool>(
-              value: false,
-              groupValue: _isAm,
-              onChanged: (value) => setState(() => _isAm = value!),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  time != null
+                      ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+                      : '시간 선택',
+                  style: TextStyle(
+                    color: time != null ? Colors.black : Colors.grey,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.access_time, size: 20),
+              ],
             ),
-            const Text('PM'),
-          ],
+          ),
         ),
       ],
     );

@@ -1,82 +1,101 @@
 import 'package:flutter/material.dart';
 
 class CustomDialog extends StatelessWidget {
-  final String title;
-  final Widget content;
-  final List<Widget> actions;
+  final String? title;
+  final Widget? content;
+  final List<Widget>? actions;
+  final Widget? child;
 
   const CustomDialog({
     super.key,
-    required this.title,
-    required this.content,
-    this.actions = const [],
+    this.title,
+    this.content,
+    this.actions,
+    this.child,
   });
+
+  static Future<T?> show<T>({
+    required BuildContext context,
+    String? title,
+    Widget? content,
+    List<Widget>? actions,
+    Widget? child,
+  }) {
+    return showDialog<T>(
+      context: context,
+      builder:
+          (context) => CustomDialog(
+            title: title,
+            content: content,
+            actions: actions,
+            child: child,
+          ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 1),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
+      backgroundColor: const Color(0xffF8F9FA),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: 280,
+          maxWidth: 331.4,
+          minHeight: 0,
+          maxHeight: 795,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
+            if (title != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title!,
+                        style: const TextStyle(
+                          color: Colors.black87,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             Flexible(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: content,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: child ?? content,
                 ),
               ),
             ),
-            if (actions.isNotEmpty)
+            if (actions != null && actions!.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
-                  children:
-                      actions.map<Widget>((action) {
-                        if (action is TextButton) {
-                          return action;
-                        }
-                        return action;
-                      }).toList(),
+                  children: actions!,
                 ),
               ),
           ],
