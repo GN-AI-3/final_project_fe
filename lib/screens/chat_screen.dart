@@ -196,28 +196,33 @@ class ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: const Text(ChatConstants.appTitle),
         forceMaterialTransparency: true,
+        backgroundColor: const Color(0xfff0f0f0),
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: _messages.length,
-                padding: const EdgeInsets.all(ChatConstants.messagePadding),
-                itemBuilder: (context, index) {
-                  return ChatMessageBubble(message: _messages[index]);
-                },
+        child: Container(
+          color: const Color(0xfff0f0f0),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _messages.length,
+                  padding: const EdgeInsets.all(ChatConstants.messagePadding),
+                  reverse: true,
+                  itemBuilder: (context, index) {
+                    return ChatMessageBubble(message: _messages[_messages.length - 1 - index]);
+                  },
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: ChatInputField(
-                controller: _messageController,
-                onSend: _sendMessage,
-                isLoading: _isLoading,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: ChatInputField(
+                  controller: _messageController,
+                  onSend: _sendMessage,
+                  isLoading: _isLoading,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

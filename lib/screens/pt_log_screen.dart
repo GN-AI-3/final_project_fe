@@ -262,58 +262,62 @@ class PtLogScreenState extends State<PtLogScreen> {
       appBar: AppBar(
         title: const Text(PtLogConstants.appTitle),
         forceMaterialTransparency: true,
+        backgroundColor: const Color(0xfff0f0f0),
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+        child: Container(
+          color: const Color(0xfff0f0f0),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey[300]!, width: 1),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.meeting.eventName,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('시작 일시: ${_formatDateTime(widget.meeting.from)}'),
+                        Text('종료 일시: ${_formatDateTime(widget.meeting.to)}'),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.meeting.eventName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('시작 일시: ${_formatDateTime(widget.meeting.from)}'),
-                      Text('종료 일시: ${_formatDateTime(widget.meeting.to)}'),
-                    ],
-                  ),
-                ],
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _messages.length,
+                  padding: const EdgeInsets.all(PtLogConstants.messagePadding),
+                  itemBuilder: (context, index) {
+                    return ChatMessageBubble(message: _messages[index]);
+                  },
+                ),
               ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _messages.length,
-                padding: const EdgeInsets.all(PtLogConstants.messagePadding),
-                itemBuilder: (context, index) {
-                  return ChatMessageBubble(message: _messages[index]);
-                },
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: ChatInputField(
+                  controller: _messageController,
+                  onSend: _sendMessage,
+                  isLoading: _isLoading,
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: ChatInputField(
-                controller: _messageController,
-                onSend: _sendMessage,
-                isLoading: _isLoading,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

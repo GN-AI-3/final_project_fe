@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import '../models/meeting.dart';
+import '../models/pt_contract.dart';
 import '../models/schedule.dart';
 import '../screens/pt_log_screen.dart';
+import '../services/pt_contract_service.dart';
 import '../services/schedule_service.dart';
 import '../widgets/add_schedule_dialog.dart';
 import '../widgets/change_schedule_dialog.dart';
@@ -19,6 +21,14 @@ class CalendarConstants {
     'completed': '[완료된 일정]',
     'cancelled': '[취소된 일정]',
     'no_show': '[불참]',
+  };
+
+  static const Map<String, String> filterStatusToDescription = {
+    'SCHEDULED': '[예약된 일정]',
+    'CHANGED': '[변경된 일정]',
+    'COMPLETED': '[완료된 일정]',
+    'CANCELLED': '[취소된 일정]',
+    'NO_SHOW': '[불참]',
   };
 
   static const Map<CalendarView, IconData> viewIcons = {
@@ -86,12 +96,16 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  final CalendarState _state = CalendarState();
   final ScheduleService _scheduleService = ScheduleService();
+  final PtContractService _ptContractService = PtContractService();
+  List<PtContract> _ptContracts = [];
+  final CalendarState _state = CalendarState();
 
   @override
   void initState() {
     super.initState();
+    _loadMeetings();
+    _loadPtContracts();
   }
 
   Future<void> _loadMeetings({DateTime? startDate, DateTime? endDate}) async {
@@ -126,10 +140,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      _showErrorDialog(e.toString());
+      _showError('앗!', e);
     } finally {
       if (mounted) {
         _state.updateLoading(false);
+      }
+    }
+  }
+
+  Future<void> _loadPtContracts() async {
+    try {
+      final contracts = await _ptContractService.getContractMembers('ACTIVE');
+      if (mounted) {
+        setState(() => _ptContracts = contracts);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showError('PT 계약 회원 목록을 불러오는데 실패했습니다', e);
       }
     }
   }
@@ -157,31 +184,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showErrorDialog(String error) {
-    String errorMessage = error;
-
-    if (error.contains('IllegalArgumentException')) {
-      final startIndex = error.indexOf('IllegalArgumentException');
-      errorMessage =
-          error
-              .substring(startIndex + 'IllegalArgumentException'.length)
-              .trim();
+  void _showError(String message, dynamic error) {
+    if (kDebugMode) {
+      print('$message: $error');
     }
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => CustomDialog(
-            title: '앗!',
-            content: Text(errorMessage),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('확인'),
-              ),
-            ],
-          ),
-    );
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder:
+            (context) => CustomDialog(
+              title: '앗!',
+              content: Text('$message\n${error?.toString() ?? ''}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('확인'),
+                ),
+              ],
+            ),
+      );
+    }
   }
 
   void _showAddMeetingDialog() {
@@ -190,18 +212,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
       builder:
           (context) => AddScheduleDialog(
             scheduleService: _scheduleService,
-            onScheduleAdded: () {
-              if (_state.lastStartDate != null && _state.lastEndDate != null) {
-                _loadMeetings(
-                  startDate: _state.lastStartDate,
-                  endDate: _state.lastEndDate,
-                );
-              } else {
-                _loadMeetings();
-              }
-            },
+            contracts: _ptContracts,
           ),
-    );
+    ).then((_) {
+      if (_state.lastStartDate != null && _state.lastEndDate != null) {
+        _loadMeetings(
+          startDate: _state.lastStartDate,
+          endDate: _state.lastEndDate,
+        );
+      } else {
+        _loadMeetings();
+      }
+    });
   }
 
   void _showMeetingDetails(Meeting meeting) {
@@ -256,32 +278,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
               children: [
                 if (meeting.description?.contains('[완료된 일정]') ?? false)
                   ListTile(
-                    leading: const Icon(Icons.person_off),
-                    title: const Text('불참 처리'),
+                    leading: const Icon(Icons.person_off, color: Colors.red),
+                    title: const Text(
+                      '불참 처리',
+                      style: TextStyle(color: Colors.red),
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       _showNoShowDialog(meeting);
                     },
+                  )
+                else ...[
+                  ListTile(
+                    leading: const Icon(Icons.edit),
+                    title: const Text('일정 수정'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showChangeScheduleDialog(meeting);
+                    },
                   ),
-                ListTile(
-                  leading: const Icon(Icons.edit),
-                  title: const Text('일정 수정'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showChangeScheduleDialog(meeting);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cancel, color: Colors.red),
-                  title: const Text(
-                    '일정 취소',
-                    style: TextStyle(color: Colors.red),
+                  ListTile(
+                    leading: const Icon(Icons.cancel, color: Colors.red),
+                    title: const Text(
+                      '일정 취소',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showCancelDialog(meeting);
+                    },
                   ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showCancelDialog(meeting);
-                  },
-                ),
+                ],
               ],
             ),
           ),
@@ -417,10 +444,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (_state.selectedStatus == null) {
         _state.updateFilteredMeetings(_state.meetings);
       } else {
+        final targetDescription =
+            CalendarConstants.filterStatusToDescription[_state.selectedStatus];
         _state.updateFilteredMeetings(
           _state.meetings.where((meeting) {
             final status = meeting.description?.split('\n')[0];
-            return status == _getStatusDescription(_state.selectedStatus!);
+            return status == targetDescription;
           }).toList(),
         );
       }
@@ -445,12 +474,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         const PopupMenuItem<String>(value: 'NO_SHOW', child: Text('불참')),
       ],
     ).then((value) {
-      if (value != null) {
-        setState(() {
-          _state.updateSelectedStatus(value);
-        });
+      setState(() {
+        _state.updateSelectedStatus(value);
         _filterMeetings();
-      }
+      });
     });
   }
 
@@ -506,74 +533,86 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
         forceMaterialTransparency: true,
+        backgroundColor: const Color(0xfff0f0f0),
       ),
       body: Stack(
         children: [
           _state.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : SfCalendar(
-                controller: _state.controller,
-                view: _state.currentView,
-                headerHeight: 50,
-                headerStyle: const CalendarHeaderStyle(
-                  textAlign: TextAlign.start,
-                  backgroundColor: Color(0xfff0f0f0),
-                  textStyle: TextStyle(fontSize: 22, color: Colors.black87),
-                ),
-                headerDateFormat: 'yyyy년 M월',
-                timeZone: 'Korea Standard Time',
-                scheduleViewSettings: const ScheduleViewSettings(
-                  hideEmptyScheduleWeek: true,
-                  appointmentItemHeight: 70,
-                  appointmentTextStyle: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  weekHeaderSettings: WeekHeaderSettings(
-                    startDateFormat: 'M월 d일 ',
-                    endDateFormat: 'd일',
+              : Container(
+                color: const Color(0xfff0f0f0),
+                child: SfCalendar(
+                  controller: _state.controller,
+                  view: _state.currentView,
+                  headerHeight: 50,
+                  headerStyle: const CalendarHeaderStyle(
                     textAlign: TextAlign.start,
+                    backgroundColor: Color(0xfff0f0f0),
+                    textStyle: TextStyle(fontSize: 22, color: Colors.black87),
                   ),
-                  monthHeaderSettings: MonthHeaderSettings(
-                    monthFormat: 'yyyy년 M월',
-                    height: 70,
-                    textAlign: TextAlign.center,
+                  headerDateFormat: ' yyyy년 M월',
+                  timeZone: 'Korea Standard Time',
+                  scheduleViewSettings: const ScheduleViewSettings(
+                    hideEmptyScheduleWeek: true,
+                    appointmentItemHeight: 70,
+                    appointmentTextStyle: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    weekHeaderSettings: WeekHeaderSettings(
+                      startDateFormat: 'M월 d일 ',
+                      endDateFormat: 'd일',
+                      textAlign: TextAlign.start,
+                    ),
+                    monthHeaderSettings: MonthHeaderSettings(
+                      monthFormat: 'yyyy년 M월',
+                      height: 70,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
+                  monthViewSettings: const MonthViewSettings(
+                    showAgenda: true,
+                    agendaViewHeight: 350,
+                    appointmentDisplayCount: 6,
+                  ),
+                  selectionDecoration: BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border.all(
+                      color: const Color(0xff2746f8),
+                      width: 2,
+                    ),
+                    borderRadius: const BorderRadius.all(Radius.circular(4)),
+                    shape: BoxShape.rectangle,
+                  ),
+                  firstDayOfWeek: 1,
+                  cellEndPadding: 0,
+                  todayHighlightColor: const Color(0xff2746f8),
+                  backgroundColor: const Color(0xfff0f0f0),
+                  initialSelectedDate: DateTime.now().toLocal(),
+                  initialDisplayDate: DateTime.now().toLocal(),
+                  dataSource: MeetingDataSource(_state.filteredMeetings),
+                  timeSlotViewSettings: const TimeSlotViewSettings(
+                    timeIntervalHeight: 70,
+                  ),
+                  showDatePickerButton: true,
+                  showTodayButton: true,
+                  onTap: (CalendarTapDetails details) {
+                    if (details.targetElement == CalendarElement.appointment) {
+                      _showMeetingDetails(details.appointments![0] as Meeting);
+                    }
+                  },
+                  onLongPress: (CalendarLongPressDetails details) {
+                    if (details.targetElement == CalendarElement.appointment) {
+                      final meeting = details.appointments![0] as Meeting;
+                      if (meeting.description != null &&
+                          !meeting.description!.contains('[취소된 일정]') &&
+                          !meeting.description!.contains('[변경된 일정]')) {
+                        _showMeetingOptions(meeting);
+                      }
+                    }
+                  },
+                  onViewChanged: _handleViewChanged,
                 ),
-                monthViewSettings: const MonthViewSettings(
-                  showAgenda: true,
-                  agendaViewHeight: 350,
-                  appointmentDisplayCount: 6,
-                ),
-                selectionDecoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border.all(color: const Color(0xff2746f8), width: 2),
-                  borderRadius: const BorderRadius.all(Radius.circular(4)),
-                  shape: BoxShape.rectangle,
-                ),
-                firstDayOfWeek: 1,
-                cellEndPadding: 0,
-                todayHighlightColor: const Color(0xff2746f8),
-                backgroundColor: const Color(0xfff0f0f0),
-                initialSelectedDate: DateTime.now().toLocal(),
-                initialDisplayDate: DateTime.now().toLocal(),
-                dataSource: MeetingDataSource(_state.filteredMeetings),
-                timeSlotViewSettings: const TimeSlotViewSettings(
-                  timeIntervalHeight: 70,
-                ),
-                showDatePickerButton: true,
-                showTodayButton: true,
-                onTap: (CalendarTapDetails details) {
-                  if (details.targetElement == CalendarElement.appointment) {
-                    _showMeetingDetails(details.appointments![0] as Meeting);
-                  }
-                },
-                onLongPress: (CalendarLongPressDetails details) {
-                  if (details.targetElement == CalendarElement.appointment) {
-                    _showMeetingOptions(details.appointments![0] as Meeting);
-                  }
-                },
-                onViewChanged: _handleViewChanged,
               ),
         ],
       ),

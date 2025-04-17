@@ -2,18 +2,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/pt_contract.dart';
-import '../services/pt_contract_service.dart';
 import '../services/schedule_service.dart';
 import 'custom_dialog.dart';
 
 class AddScheduleDialog extends StatefulWidget {
+  final List<PtContract> contracts;
   final ScheduleService scheduleService;
-  final Function() onScheduleAdded;
 
   const AddScheduleDialog({
     super.key,
+    required this.contracts,
     required this.scheduleService,
-    required this.onScheduleAdded,
   });
 
   @override
@@ -21,69 +20,34 @@ class AddScheduleDialog extends StatefulWidget {
 }
 
 class _AddScheduleDialogState extends State<AddScheduleDialog> {
-  final _ptContractService = PtContractService();
-  final _formKey = GlobalKey<FormState>();
-  final bool _isLoading = false;
-
   PtContract? _selectedContract;
   DateTime? _selectedDate;
-  String _selectedAmPm = '오전';
-  int _selectedHour = 9;
-  List<PtContract> _contracts = [];
+  TimeOfDay _selectedTime = TimeOfDay.now();
+  bool _isAm = true;
 
   @override
   void initState() {
     super.initState();
-    _initializeDateTime();
-    _loadContracts();
-  }
-
-  void _initializeDateTime() {
-    final now = DateTime.now();
-    setState(() {
-      _selectedDate = now;
-      _selectedHour = now.hour;
-      _selectedAmPm = _selectedHour < 12 ? '오전' : '오후';
-      _selectedHour = _selectedHour % 12 == 0 ? 12 : _selectedHour % 12;
-    });
-  }
-
-  Future<void> _loadContracts() async {
-    try {
-      final contracts = await _ptContractService.getContractMembers('ACTIVE');
-      if (mounted) {
-        setState(() => _contracts = contracts);
-      }
-    } catch (e) {
-      _showError('PT 계약 회원 목록을 불러오는데 실패했습니다', e);
-    }
+    _selectedDate = DateTime.now();
   }
 
   int _get24Hour() {
-    if (_selectedAmPm == '오후' && _selectedHour != 12) {
-      return _selectedHour + 12;
-    } else if (_selectedAmPm == '오전' && _selectedHour == 12) {
-      return 0;
+    int hour = _selectedTime.hour;
+    if (!_isAm && hour != 12) {
+      hour += 12;
+    } else if (_isAm && hour == 12) {
+      hour = 0;
     }
-    return _selectedHour;
+    return hour;
   }
 
   bool _validateForm() {
     if (_selectedContract == null) {
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('알림'),
-              content: const Text('PT 회원을 선택해주세요'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
-      );
+      _showError('회원을 선택해주세요', null);
+      return false;
+    }
+    if (_selectedDate == null) {
+      _showError('날짜를 선택해주세요', null);
       return false;
     }
     return true;
@@ -125,7 +89,7 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
 
     try {
       await widget.scheduleService.createSchedule(
-        ptContractId: _selectedContract!.contract.contractId,
+        ptContractId: _selectedContract!.id,
         startTime: startDateTime,
         endTime: endDateTime,
       );
@@ -142,14 +106,14 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
     showDialog(
       context: context,
       builder:
-          (context) => CustomDialog(
-            title: '일정 추가',
+          (context) => AlertDialog(
+            title: const Text('일정 추가 완료'),
             content: const Text('일정이 성공적으로 추가되었습니다.'),
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  widget.onScheduleAdded();
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
                 },
                 child: const Text('확인'),
               ),
@@ -160,32 +124,27 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '새 일정',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              _buildContractDropdown(),
-              const SizedBox(height: 16),
-              _buildDatePicker(),
-              Transform.translate(
-                offset: const Offset(0, -20),
-                child: _buildTimeSelector(),
-              ),
-              _buildActionButtons(),
-            ],
-          ),
+    return AlertDialog(
+      title: const Text('일정 추가'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildContractDropdown(),
+            const SizedBox(height: 16),
+            _buildDatePicker(),
+            const SizedBox(height: 16),
+            _buildTimePicker(),
+          ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        ElevatedButton(onPressed: _addSchedule, child: const Text('추가')),
+      ],
     );
   }
 
@@ -204,11 +163,11 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
             constraints: BoxConstraints(maxWidth: 300),
           ),
           items:
-              _contracts.map((contract) {
+              widget.contracts.map((contract) {
                 return DropdownMenuItem<PtContract>(
                   value: contract,
                   child: Text(
-                    '${contract.memberName} (${contract.phone}) - 남은 PT: ${contract.contract.remainingCount}회',
+                    '${contract.memberName} - 남은 PT: ${contract.remainingCount}회',
                   ),
                 );
               }).toList(),
@@ -219,82 +178,65 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
   }
 
   Widget _buildDatePicker() {
-    return CalendarDatePicker(
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      onDateChanged: (date) => setState(() => _selectedDate = date),
-    );
-  }
-
-  Widget _buildTimeSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('시작 시간: ', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          DropdownButton<String>(
-            value: _selectedAmPm,
-            items:
-                ['오전', '오후'].map((value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value, style: const TextStyle(fontSize: 16)),
-                  );
-                }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedAmPm = value);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          DropdownButton<int>(
-            value: _selectedHour,
-            items:
-                List.generate(12, (index) => index + 1).map((value) {
-                  return DropdownMenuItem<int>(
-                    value: value,
-                    child: Text('$value', style: const TextStyle(fontSize: 16)),
-                  );
-                }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedHour = value);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          const Text('시', style: TextStyle(fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        const Text('날짜: '),
         TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('취소'),
+          onPressed: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: _selectedDate ?? DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)),
+            );
+            if (date != null) {
+              setState(() => _selectedDate = date);
+            }
+          },
+          child: Text(
+            _selectedDate != null
+                ? '${_selectedDate!.year}년 ${_selectedDate!.month}월 ${_selectedDate!.day}일'
+                : '날짜 선택',
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTimePicker() {
+    return Row(
+      children: [
+        const Text('시간: '),
         TextButton(
-          onPressed: _isLoading ? null : _addSchedule,
-          child:
-              _isLoading
-                  ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                  : const Text('추가'),
+          onPressed: () async {
+            final time = await showTimePicker(
+              context: context,
+              initialTime: _selectedTime,
+            );
+            if (time != null) {
+              setState(() => _selectedTime = time);
+            }
+          },
+          child: Text(
+            '${_selectedTime.hour.toString().padLeft(2, '0')}:${_selectedTime.minute.toString().padLeft(2, '0')}',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Row(
+          children: [
+            Radio<bool>(
+              value: true,
+              groupValue: _isAm,
+              onChanged: (value) => setState(() => _isAm = value!),
+            ),
+            const Text('AM'),
+            Radio<bool>(
+              value: false,
+              groupValue: _isAm,
+              onChanged: (value) => setState(() => _isAm = value!),
+            ),
+            const Text('PM'),
+          ],
         ),
       ],
     );

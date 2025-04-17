@@ -5,6 +5,7 @@ import '../services/fcm_service.dart';
 import '../widgets/custom_dialog.dart';
 import 'calendar_screen.dart';
 import 'chat_screen.dart';
+import 'member_calendar_screen.dart';
 import 'member_profile_screen.dart';
 import 'pt_contract_screen.dart';
 
@@ -143,21 +144,28 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 _buildFeatureCard(
                   icon: Icons.chat,
-                  title: '채팅하기',
+                  title: '채팅하기(회원용)',
                   description: '챗봇과 실시간 채팅',
                   onTap: () => _navigateToScreen(const ChatScreen()),
                 ),
                 const SizedBox(height: 16),
                 _buildFeatureCard(
                   icon: Icons.calendar_today,
-                  title: '캘린더',
+                  title: '캘린더(트레이너용)',
                   description: 'PT 일정 관리 및 조회',
                   onTap: () => _navigateToScreen(const CalendarScreen()),
                 ),
                 const SizedBox(height: 16),
                 _buildFeatureCard(
+                  icon: Icons.calendar_today,
+                  title: '캘린더(회원용)',
+                  description: 'PT 일정 관리 및 조회',
+                  onTap: () => _navigateToScreen(const MemberCalendarScreen()),
+                ),
+                const SizedBox(height: 16),
+                _buildFeatureCard(
                   icon: Icons.description,
-                  title: '계약 관리',
+                  title: '계약 관리(트레이너용)',
                   description: '회원 계약 정보 관리',
                   onTap: () => _navigateToScreen(const PtContractScreen()),
                 ),
@@ -192,34 +200,41 @@ class _HomeScreenState extends State<HomeScreen> {
       child: InkWell(
         onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 200, maxWidth: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 48, color: const Color(0xff2746f8)),
-              const SizedBox(height: 12),
+              Icon(icon, size: 40, color: const Color(0xff2746f8)),
+              const SizedBox(height: 8),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 description,
-                style: const TextStyle(color: Colors.grey),
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
               if (isLoading) ...[
-                const SizedBox(height: 8),
-                const CircularProgressIndicator(),
+                const SizedBox(height: 4),
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ],
               if (error != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text(
                   error,
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                  style: const TextStyle(color: Colors.red, fontSize: 11),
                   textAlign: TextAlign.center,
                 ),
               ],

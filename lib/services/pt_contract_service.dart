@@ -70,19 +70,20 @@ class PtContractService {
     }
   }
 
-  Future<void> updateContractStatus(
-    int contractId,
-    String newStatus,
-    String memo,
-  ) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/api/pt_contracts/$contractId/status'),
-      headers: _defaultHeaders,
-      body: jsonEncode({'status': newStatus, 'memo': memo}),
-    );
+  Future<PtContract> updateContractStatus(
+    int contractId, {
+    required String status,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/api/pt_contracts/$contractId/status',
+    ).replace(queryParameters: {'status': status});
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to update contract status');
+    final response = await http.patch(uri, headers: _defaultHeaders);
+
+    if (response.statusCode == 200) {
+      return PtContract.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to update contract status: ${response.body}');
     }
   }
 }
