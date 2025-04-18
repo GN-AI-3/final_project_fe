@@ -1,4 +1,3 @@
-// lib/services/chat_service.dart
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,9 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/env.dart';
-import '../models/chat_message.dart';
-import '../screens/chat_screen.dart';
+import '../../config/env.dart';
+import '../../models/chat_message.dart';
+import '../../screens/chat_screen.dart';
+
+
 
 class ChatService {
   static String get baseUrl => Env.getServerURL();

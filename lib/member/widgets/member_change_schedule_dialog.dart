@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../models/meeting.dart';
-import '../services/schedule_service.dart';
-import '../widgets/custom_toast.dart';
+import '../../models/meeting.dart';
+import '../../trainer/services/schedule_service.dart';
+import '../../widgets/custom_toast.dart';
+
 
 class MemberChangeScheduleDialog extends StatefulWidget {
   final ScheduleService scheduleService;

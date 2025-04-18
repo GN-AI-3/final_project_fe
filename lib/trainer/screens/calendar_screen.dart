@@ -2,16 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-import '../models/meeting.dart';
-import '../models/schedule.dart';
+import '../../models/meeting.dart';
+import '../../models/pt_contract.dart';
+import '../../models/schedule.dart';
+import '../../widgets/custom_dialog.dart';
+import '../../widgets/custom_toast.dart';
+import '../screens/pt_log_screen.dart';
+import '../services/pt_contract_service.dart';
 import '../services/schedule_service.dart';
-import '../widgets/custom_dialog.dart';
-import '../widgets/member_change_schedule_dialog.dart';
-import '../widgets/member_no_show_dialog.dart';
+import '../widgets/add_schedule_dialog.dart';
+import '../widgets/change_schedule_dialog.dart';
+import '../widgets/no_show_dialog.dart';
 
-class MemberCalendarConstants {
+class CalendarConstants {
   static const Map<String, String> statusDescriptions = {
     'scheduled': '[예정된 일정]',
+    // 필터용, 표시 안함
     'changed': '[변경된 일정]',
     'completed': '[완료된 일정]',
     'cancelled': '[취소된 일정]',
@@ -33,7 +39,7 @@ class MemberCalendarConstants {
   };
 }
 
-class MemberCalendarState {
+class CalendarState {
   final CalendarController controller = CalendarController();
   CalendarView currentView = CalendarView.month;
   List<Meeting> meetings = [];
@@ -42,6 +48,15 @@ class MemberCalendarState {
   bool isLoading = false;
   DateTime? lastStartDate;
   DateTime? lastEndDate;
+  final Map<int, Color> memberColors = {};
+
+  Color getMemberColor(int memberId) {
+    if (!memberColors.containsKey(memberId)) {
+      final hue = (memberId * 137.508) % 360;
+      memberColors[memberId] = HSLColor.fromAHSL(0.9, hue, 0.85, 0.4).toColor();
+    }
+    return memberColors[memberId]!;
+  }
 
   void updateView(CalendarView newView) {
     currentView = newView;
@@ -66,25 +81,24 @@ class MemberCalendarState {
   }
 }
 
-class MemberCalendarScreen extends StatefulWidget {
-  const MemberCalendarScreen({super.key});
+class CalendarScreen extends StatefulWidget {
+  const CalendarScreen({super.key});
 
   @override
-  State<MemberCalendarScreen> createState() => _MemberCalendarScreenState();
+  State<CalendarScreen> createState() => _CalendarScreenState();
 }
 
-class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
-  final ScheduleService _scheduleService = MemberScheduleService();
-  final MemberCalendarState _state = MemberCalendarState();
-  DateTime _selectedDate = DateTime.now();
-  bool _isButtonVisible = false;
+class _CalendarScreenState extends State<CalendarScreen> {
+  final ScheduleService _scheduleService = TrainerScheduleService();
+  final PtContractService _ptContractService = PtContractService();
+  List<PtContract> _ptContracts = [];
+  final CalendarState _state = CalendarState();
 
   @override
   void initState() {
     super.initState();
-    _isButtonVisible = true;
-    _state.updateSelectedStatus('scheduled');
     _loadMeetings();
+    _loadPtContracts();
   }
 
   Future<void> _loadMeetings({DateTime? startDate, DateTime? endDate}) async {
@@ -104,7 +118,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
 
       if (!mounted) return;
 
-      final meetings = schedules.map((schedule) {
+      final meetings = schedules.map<Meeting>((Schedule schedule) {
         return _createMeeting(schedule);
       }).toList();
 
@@ -112,7 +126,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
 
       _state.meetings = meetings;
       _state.updateFilteredMeetings(meetings);
-      _filterMeetings();
 
       if (mounted) {
         setState(() {});
@@ -127,6 +140,23 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     }
   }
 
+  Future<void> _loadPtContracts() async {
+    try {
+      final contracts = await _ptContractService.getContractMembers();
+      if (mounted) {
+        setState(() => _ptContracts = contracts);
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomToast.show(
+          context: context,
+          message: 'PT 계약 회원 목록을 불러오는데 실패했습니다: $e',
+          type: ToastType.error,
+        );
+      }
+    }
+  }
+
   Meeting _createMeeting(Schedule schedule) {
     final eventName =
         [
@@ -134,16 +164,16 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
               'cancelled',
               'no_show',
             ].contains(schedule.status.toLowerCase())
-            ? '${_getStatusDescription(schedule.status)} ${schedule.trainerName} 트레이너님 - ${schedule.reason}'
+            ? '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 - ${schedule.reason}'
             : schedule.status.toLowerCase() == 'scheduled'
-            ? '${schedule.currentPtCount}회차 PT'
-            : '${_getStatusDescription(schedule.status)} ${schedule.trainerName} 트레이너님 (${schedule.currentPtCount}회차)';
+            ? '${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)'
+            : '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)';
 
     return Meeting(
       eventName,
       schedule.startTime,
       schedule.endTime,
-      Colors.blue,
+      _state.getMemberColor(schedule.memberId),
       false,
       id: schedule.id,
       scheduleId: schedule.id,
@@ -173,6 +203,25 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     }
   }
 
+  void _showAddMeetingDialog() {
+    CustomDialog.show(
+      context: context,
+      child: AddScheduleDialog(
+        scheduleService: _scheduleService,
+        contracts: _ptContracts,
+      ),
+    ).then((_) {
+      if (_state.lastStartDate != null && _state.lastEndDate != null) {
+        _loadMeetings(
+          startDate: _state.lastStartDate,
+          endDate: _state.lastEndDate,
+        );
+      } else {
+        _loadMeetings();
+      }
+    });
+  }
+
   void _showMeetingDetails(Meeting meeting) {
     CustomDialog.show(
       context: context,
@@ -187,6 +236,23 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         ],
       ),
       actions: [
+        if (meeting.description?.contains('[완료된 일정]') ?? false)
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => PtLogScreen(
+                        scheduleId: meeting.scheduleId!,
+                        meeting: meeting,
+                      ),
+                ),
+              );
+            },
+            child: const Text('PT 기록하기'),
+          ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('닫기'),
@@ -224,6 +290,17 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                       _showChangeScheduleDialog(meeting);
                     },
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.cancel, color: Colors.red),
+                    title: const Text(
+                      '일정 취소',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showCancelDialog(meeting);
+                    },
+                  ),
                 ],
               ],
             ),
@@ -234,7 +311,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
   void _showChangeScheduleDialog(Meeting meeting) {
     CustomDialog.show(
       context: context,
-      child: MemberChangeScheduleDialog(
+      child: ChangeScheduleDialog(
         scheduleService: _scheduleService,
         meeting: meeting,
         onScheduleChanged: () {
@@ -251,10 +328,77 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     );
   }
 
+  void _showCancelDialog(Meeting meeting) {
+    final TextEditingController reasonController = TextEditingController(
+      text: '트레이너와 협의',
+    );
+
+    if (kDebugMode) {
+      print('일정 취소 요청 - meeting: $meeting');
+      print('일정 ID: ${meeting.scheduleId}');
+      print('일정 이름: ${meeting.eventName}');
+    }
+
+    CustomDialog.show(
+      context: context,
+      title: '일정 취소',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${meeting.eventName} 일정을 취소하시겠습니까?'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: reasonController,
+            decoration: const InputDecoration(
+              labelText: '취소 사유',
+              hintText: '취소 사유를 입력하세요',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () async {
+            try {
+              if (meeting.scheduleId == null) {
+                throw Exception('오류');
+              }
+              await _scheduleService.cancelSchedule(
+                scheduleId: meeting.scheduleId!,
+                reason: reasonController.text,
+              );
+              if (mounted) {
+                Navigator.pop(context);
+                _loadMeetings(
+                  startDate: _state.lastStartDate,
+                  endDate: _state.lastEndDate,
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                Navigator.pop(context);
+                CustomToast.show(
+                  context: context,
+                  message: e.toString(),
+                  type: ToastType.error,
+                );
+              }
+            }
+          },
+          child: const Text('확인'),
+        ),
+      ],
+    );
+  }
+
   void _showNoShowDialog(Meeting meeting) {
     CustomDialog.show(
       context: context,
-      child: MemberNoShowDialog(
+      child: NoShowDialog(
         meeting: meeting,
         scheduleService: _scheduleService,
         onNoShowProcessed: () {
@@ -278,8 +422,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
   void _changeView() {
     setState(() {
       _state.updateView(
-        MemberCalendarConstants.nextView[_state.currentView] ??
-            CalendarView.month,
+        CalendarConstants.nextView[_state.currentView] ?? CalendarView.month,
       );
     });
   }
@@ -290,7 +433,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         _state.updateFilteredMeetings(_state.meetings);
       } else {
         final targetDescription =
-            MemberCalendarConstants.statusDescriptions[_state.selectedStatus!
+            CalendarConstants.statusDescriptions[_state.selectedStatus!
                 .toLowerCase()];
         _state.updateFilteredMeetings(
           _state.meetings.where((meeting) {
@@ -306,7 +449,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
   }
 
   String _getStatusDescription(String status) {
-    return MemberCalendarConstants.statusDescriptions[status.toLowerCase()] ??
+    return CalendarConstants.statusDescriptions[status.toLowerCase()] ??
         '[${status.toUpperCase()}]';
   }
 
@@ -363,16 +506,12 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     }
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}년 ${date.month}월 ${date.day}일';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: const Text('깔쌈한 제목'),
+        title: const Text('캘린더'),
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
@@ -380,7 +519,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
           ),
           IconButton(
             icon: Icon(
-              MemberCalendarConstants.viewIcons[_state.currentView] ??
+              CalendarConstants.viewIcons[_state.currentView] ??
                   Icons.calendar_month,
             ),
             onPressed: _changeView,
@@ -427,8 +566,8 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                   monthViewSettings: const MonthViewSettings(
                     showAgenda: true,
                     agendaViewHeight: 350,
-                    appointmentDisplayCount: 2,
-                    agendaItemHeight: 50,
+                    appointmentDisplayCount: 6,
+
                   ),
                   selectionDecoration: BoxDecoration(
                     color: Colors.transparent,
@@ -439,7 +578,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                     borderRadius: const BorderRadius.all(Radius.circular(4)),
                     shape: BoxShape.rectangle,
                   ),
-                  firstDayOfWeek: 1,
                   cellEndPadding: 0,
                   todayHighlightColor: const Color(0xff2746f8),
                   backgroundColor: const Color(0xfff0f0f0),
@@ -451,19 +589,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                   onTap: (CalendarTapDetails details) {
                     if (details.targetElement == CalendarElement.appointment) {
                       _showMeetingDetails(details.appointments![0] as Meeting);
-                    } else if (details.targetElement ==
-                        CalendarElement.calendarCell) {
-                      setState(() {
-                        _selectedDate = details.date!;
-                        _isButtonVisible = false;
-                      });
-                      Future.delayed(const Duration(milliseconds: 50), () {
-                        if (mounted) {
-                          setState(() {
-                            _isButtonVisible = true;
-                          });
-                        }
-                      });
                     }
                   },
                   onLongPress: (CalendarLongPressDetails details) {
@@ -479,55 +604,11 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                   onViewChanged: _handleViewChanged,
                 ),
               ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              transform: Matrix4.translationValues(
-                0,
-                _isButtonVisible ? 0 : 100,
-                0,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    // 버튼 클릭 시 동작 추가
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xff2746f8),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    '${_formatDate(_selectedDate)} 개인 운동 기록하기',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddMeetingDialog,
+        child: const Icon(Icons.add),
       ),
     );
   }

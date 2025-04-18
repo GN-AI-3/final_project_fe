@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
-import '../config/env.dart';
-import '../models/schedule.dart';
+import '../../config/env.dart';
+import '../../models/schedule.dart';
 
 /// 일정 관련 서비스의 기본 추상 클래스
 abstract class ScheduleService {

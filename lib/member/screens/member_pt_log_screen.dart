@@ -2,18 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/chat_message.dart';
-import '../models/meeting.dart';
-import '../services/pt_logs_service.dart';
-import '../widgets/chat_input_field.dart';
-import '../widgets/chat_message_bubble.dart';
+import '../../models/chat_message.dart';
+import '../../models/meeting.dart';
+import '../../widgets/chat_input_field.dart';
+import '../../widgets/chat_message_bubble.dart';
+import '../services/member_pt_logs_service.dart';
 
-class PtLogConstants {
+class MemberPtLogConstants {
   static const String userRole = 'user';
   static const String assistantRole = 'assistant';
   static const String errorMessage = '오류가 발생했습니다: ';
   static const String appTitle = 'PT 일지 작성';
-  static const String logHistoryKey = 'pt_log_history';
+  static const String logHistoryKey = 'member_pt_log_history';
 
   static const double messagePadding = 8.0;
   static const double messageMargin = 4.0;
@@ -38,24 +38,24 @@ class PtLogConstants {
 ''';
 }
 
-class PtLogScreen extends StatefulWidget {
+class MemberPtLogScreen extends StatefulWidget {
   final int scheduleId;
   final Meeting meeting;
 
-  const PtLogScreen({
+  const MemberPtLogScreen({
     super.key,
     required this.scheduleId,
     required this.meeting,
   });
 
   @override
-  State<PtLogScreen> createState() => PtLogScreenState();
+  State<MemberPtLogScreen> createState() => MemberPtLogScreenState();
 }
 
-class PtLogScreenState extends State<PtLogScreen> {
+class MemberPtLogScreenState extends State<MemberPtLogScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<ChatMessage> _messages = [];
-  final PtLogsService _ptLogsService = PtLogsService();
+  final MemberPtLogsService _ptLogsService = MemberPtLogsService();
   bool _isLoading = false;
   SharedPreferences? _prefs;
   bool _isPrefsInitialized = false;
@@ -66,8 +66,8 @@ class PtLogScreenState extends State<PtLogScreen> {
     _initializePrefs();
     _messages.add(
       ChatMessage(
-        content: PtLogConstants.defaultMessage,
-        role: PtLogConstants.assistantRole,
+        content: MemberPtLogConstants.defaultMessage,
+        role: MemberPtLogConstants.assistantRole,
       ),
     );
   }
@@ -89,7 +89,7 @@ class PtLogScreenState extends State<PtLogScreen> {
 
     try {
       final draftMessage = _prefs!.getString(
-        '${PtLogConstants.logHistoryKey}_${widget.scheduleId}_draft',
+        '${MemberPtLogConstants.logHistoryKey}_${widget.scheduleId}_draft',
       );
       if (draftMessage != null && mounted) {
         _messageController.text = draftMessage;
@@ -106,7 +106,7 @@ class PtLogScreenState extends State<PtLogScreen> {
 
     try {
       await _prefs!.setString(
-        '${PtLogConstants.logHistoryKey}_${widget.scheduleId}_draft',
+        '${MemberPtLogConstants.logHistoryKey}_${widget.scheduleId}_draft',
         _messageController.text,
       );
     } catch (e) {
@@ -132,7 +132,7 @@ class PtLogScreenState extends State<PtLogScreen> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 1),
+                  color: Colors.black.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -163,12 +163,12 @@ class PtLogScreenState extends State<PtLogScreen> {
 
     setState(() {
       _messages.add(
-        ChatMessage(content: userMessage, role: PtLogConstants.userRole),
+        ChatMessage(content: userMessage, role: MemberPtLogConstants.userRole),
       );
       _messages.add(
         ChatMessage(
           content: '답변을 생성하는 중...',
-          role: PtLogConstants.assistantRole,
+          role: MemberPtLogConstants.assistantRole,
         ),
       );
       _isLoading = true;
@@ -192,7 +192,7 @@ class PtLogScreenState extends State<PtLogScreen> {
           _messages.add(
             ChatMessage(
               content: response.finalResponse,
-              role: PtLogConstants.assistantRole,
+              role: MemberPtLogConstants.assistantRole,
             ),
           );
           _isLoading = false;
@@ -208,7 +208,7 @@ class PtLogScreenState extends State<PtLogScreen> {
           _messages.removeLast(); // 로딩 메시지 제거
           _isLoading = false;
         });
-        _showToast('${PtLogConstants.errorMessage}$e');
+        _showToast('${MemberPtLogConstants.errorMessage}$e');
       }
     }
   }
@@ -217,7 +217,7 @@ class PtLogScreenState extends State<PtLogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(PtLogConstants.appTitle),
+        title: const Text(MemberPtLogConstants.appTitle),
         forceMaterialTransparency: true,
         backgroundColor: const Color(0xfff0f0f0),
       ),
@@ -249,8 +249,21 @@ class PtLogScreenState extends State<PtLogScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('시작 일시: ${_formatDateTime(widget.meeting.from)}'),
-                        Text('종료 일시: ${_formatDateTime(widget.meeting.to)}'),
+                        Text(
+                          '날짜: ${widget.meeting.from}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '시간: ${widget.meeting.from} ~ ${widget.meeting.to}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -258,20 +271,25 @@ class PtLogScreenState extends State<PtLogScreen> {
               ),
               Expanded(
                 child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
                   itemCount: _messages.length,
-                  padding: const EdgeInsets.all(PtLogConstants.messagePadding),
                   itemBuilder: (context, index) {
-                    return ChatMessageBubble(message: _messages[index]);
+                    final message = _messages[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: MemberPtLogConstants.messagePadding,
+                      ),
+                      child: ChatMessageBubble(
+                        message: message,
+                      ),
+                    );
                   },
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: ChatInputField(
-                  controller: _messageController,
-                  onSend: _sendMessage,
-                  isLoading: _isLoading,
-                ),
+              ChatInputField(
+                controller: _messageController,
+                onSend: _sendMessage,
+                isLoading: _isLoading,
               ),
             ],
           ),
@@ -279,15 +297,4 @@ class PtLogScreenState extends State<PtLogScreen> {
       ),
     );
   }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}년 ${dateTime.month}월 ${dateTime.day}일 ${dateTime.hour}시 ${dateTime.minute}분';
-  }
-
-  @override
-  void dispose() {
-    _saveDraftMessage();
-    _messageController.dispose();
-    super.dispose();
-  }
-}
+} 

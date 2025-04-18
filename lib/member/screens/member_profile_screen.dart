@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../models/member.dart';
+import '../../models/member.dart';
+import '../../widgets/custom_dialog.dart';
 import '../services/member_service.dart';
-import '../widgets/custom_dialog.dart';
 
 class MemberProfileScreen extends StatefulWidget {
   const MemberProfileScreen({Key? key}) : super(key: key);

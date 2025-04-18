@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../models/pt_contract.dart';
-import '../services/pt_contract_service.dart';
-import '../services/schedule_service.dart';
-import 'custom_dialog.dart';
+import '../../models/pt_contract.dart';
+import '../../trainer/services/pt_contract_service.dart';
+import '../../trainer/services/schedule_service.dart';
+import '../../widgets/custom_dialog.dart';
+
 
 class MemberAddScheduleDialog extends StatefulWidget {
   final ScheduleService scheduleService;

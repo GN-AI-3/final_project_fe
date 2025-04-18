@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/meeting.dart';
+import '../../models/meeting.dart';
+import '../../widgets/custom_toast.dart';
 import '../services/schedule_service.dart';
-import 'custom_toast.dart';
 
 class NoShowDialog extends StatefulWidget {
   final Meeting meeting;

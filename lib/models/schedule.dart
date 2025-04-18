@@ -18,7 +18,7 @@ class Schedule {
   final DateTime startTime;
   final DateTime endTime;
   final String status;
-  final String reason;
+  final String? reason;
   final String reservationId;
   final int trainerId;
   final String trainerName;
@@ -29,6 +29,7 @@ class Schedule {
   final int usedCount;
   final int remainingPtCount;
   final int ptLogId;
+  final bool isDeducted;
 
   Schedule({
     required this.id,
@@ -36,7 +37,7 @@ class Schedule {
     required this.startTime,
     required this.endTime,
     required this.status,
-    required this.reason,
+    this.reason,
     required this.reservationId,
     required this.trainerId,
     required this.trainerName,
@@ -47,6 +48,7 @@ class Schedule {
     required this.usedCount,
     required this.remainingPtCount,
     required this.ptLogId,
+    required this.isDeducted,
   });
 
   factory Schedule.fromJson(Map<String, dynamic> json) {
@@ -58,7 +60,7 @@ class Schedule {
       startTime: times.start,
       endTime: times.end,
       status: json['status'] ?? ScheduleConstants.defaultStatus,
-      reason: json['reason'] ?? ScheduleConstants.defaultReason,
+      reason: json['reason'] as String?,
       reservationId:
           json['reservationId'] ?? ScheduleConstants.defaultReservationId,
       trainerId: json['trainerId'] ?? 0,
@@ -71,6 +73,7 @@ class Schedule {
       remainingPtCount:
           json['remainingPtCount'] ?? ScheduleConstants.defaultCount,
       ptLogId: json['ptLogId'] ?? 0,
+      isDeducted: json['isDeducted'] as bool? ?? false,
     );
   }
 
@@ -105,6 +108,7 @@ class Schedule {
     'usedCount': usedCount,
     'remainingPtCount': remainingPtCount,
     'ptLogId': ptLogId,
+    'isDeducted': isDeducted,
   };
 
   Schedule copyWith({
@@ -124,6 +128,7 @@ class Schedule {
     int? usedCount,
     int? remainingPtCount,
     int? ptLogId,
+    bool? isDeducted,
   }) => Schedule(
     id: id ?? this.id,
     ptContractId: ptContractId ?? this.ptContractId,
@@ -141,6 +146,7 @@ class Schedule {
     usedCount: usedCount ?? this.usedCount,
     remainingPtCount: remainingPtCount ?? this.remainingPtCount,
     ptLogId: ptLogId ?? this.ptLogId,
+    isDeducted: isDeducted ?? this.isDeducted,
   );
 
   @override

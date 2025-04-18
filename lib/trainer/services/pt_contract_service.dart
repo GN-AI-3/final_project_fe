@@ -5,8 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/env.dart';
-import '../models/pt_contract.dart';
+import '../../config/env.dart';
+import '../../models/pt_contract.dart';
+
 
 class PtContractService {
   static String get baseUrl => Env.getServerURL();

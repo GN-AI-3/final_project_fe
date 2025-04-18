@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../member/screens/member_calendar_screen.dart';
+import '../member/screens/member_profile_screen.dart';
 import '../services/fcm_service.dart';
+import '../trainer/screens/calendar_screen.dart';
+import '../trainer/screens/pt_contract_screen.dart';
 import '../widgets/custom_dialog.dart';
-import 'calendar_screen.dart';
 import 'chat_screen.dart';
-import 'member_calendar_screen.dart';
-import 'member_profile_screen.dart';
-import 'pt_contract_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

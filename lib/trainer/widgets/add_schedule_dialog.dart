@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../models/pt_contract.dart';
+import '../../models/pt_contract.dart';
+import '../../widgets/custom_dialog.dart';
 import '../services/schedule_service.dart';
-import 'custom_dialog.dart';
+
 
 class AddScheduleDialog extends StatefulWidget {
   final List<PtContract> contracts;

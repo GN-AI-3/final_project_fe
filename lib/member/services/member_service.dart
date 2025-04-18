@@ -5,8 +5,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
-import '../config/env.dart';
-import '../models/member.dart';
+import '../../config/env.dart';
+import '../../models/member.dart';
+
 
 class MemberService {
   static String get baseUrl => Env.getServerURL();
