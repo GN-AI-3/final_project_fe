@@ -1,15 +1,17 @@
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 import '../config/env.dart';
 import '../models/pt_log.dart';
 
 class PtLogsService {
-  static final String _baseUrl = Env.getServerURL();
+  static String get baseUrl => Env.getServerURL();
+  static final String? _authToken = dotenv.env['TRAINER_TOKEN'];
   static const String _endpoint = '/api/trainer/chat/pt_log';
-  static const String _authToken =
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsImNhcmVlciI6Iu2XrOyKpO2KuOugiOydtOuEiCAxMOuFhCIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoidHJhaW5lcjEiLCJpZCI6MSwidXNlclR5cGUiOiJUUkFJTkVSIiwiY2VydGlmaWNhdGlvbnMiOlsi7IOd7Zmc7Iqk7Y-s7Lig7KeA64-E7IKsIDLquIkiLCLqsbTqsJXsmrTrj5nqtIDrpqzsgqwiXSwiZW1haWwiOiJ0cmFpbmVyQGV4YW1wbGUuY29tIiwic3BlY2lhbGl0aWVzIjpbIuyytOykkeqwkOufiSIsIuq3vOugpeqwle2ZlCIsIuyekOyEuOq1kOyglSJdLCJpYXQiOjE3NDQ2MDIzNjQsImV4cCI6MTc0NDk2MjM2NH0.EEfJFA_2oQZukZLRk8ymo6spR1I4SFh6-zh3jN0w9CqKBDuTgtZ_gitTmp7BJzYS';
 
   Future<PtLog> sendMessage(
     String message,
@@ -17,34 +19,49 @@ class PtLogsService {
   ) async {
     try {
       if (kDebugMode) {
-        print('Sending message to endpoint: $_baseUrl$_endpoint');
-        print('Message: $message');
-        print('PT Schedule ID: $ptScheduleId');
+        print('Request body: ${jsonEncode({
+          'message': message,
+          'ptScheduleId': ptScheduleId,
+        })}');
       }
 
       final response = await http.post(
-        Uri.parse('$_baseUrl$_endpoint'),
+        Uri.parse('$baseUrl$_endpoint'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
         },
-        body: json.encode({
+        body: jsonEncode({
           'message': message,
           'ptScheduleId': ptScheduleId,
         }),
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return PtLog.fromJson(data);
-      } else {
-        throw Exception('Failed to send message: ${response.statusCode}');
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
       }
-    } catch (e) {
+
+      if (response.statusCode == 200) {
+        return PtLog.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '메시지 전송에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
       if (kDebugMode) {
         print('Error in sendMessage: $e');
+        print('Stack trace: $stackTrace');
       }
-      rethrow;
+      throw Exception('Error: $e');
     }
   }
 }

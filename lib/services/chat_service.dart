@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/env.dart';
@@ -11,8 +12,7 @@ import '../screens/chat_screen.dart';
 
 class ChatService {
   static String get baseUrl => Env.getServerURL();
-  static const String _authToken =
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoi7J6l6re87JqwIiwiaWQiOjQsInVzZXJUeXBlIjoiTUVNQkVSIiwiZW1haWwiOiJ1c2VyMUB0ZXN0LmNvbSIsImdvYWxzIjpbIldFSUdIVF9MT1NTIl0sImlhdCI6MTc0NDc4NjAxNiwiZXhwIjoxNzQ1MTQ2MDE2fQ.K0hNJEV0TLj0qYdFGpP0KeowQHmZ7kWwzxN_c8gMekjVbb1KnvMiJ0YHhsHLYG49';
+  static final String? _authToken = dotenv.env['TRAINEE_TOKEN'];
 
   Future<ChatMessage> sendMessage(
     String message,
@@ -20,12 +20,11 @@ class ChatService {
   ) async {
     try {
       if (kDebugMode) {
-        print('Preparing to send message to: $baseUrl/api/anonymous-chat/send');
         print('Request body: ${jsonEncode({'content': message})}');
       }
 
       final response = await http.post(
-        Uri.parse('$baseUrl/api/anonymous-chat/send'),
+        Uri.parse('$baseUrl/api/chat/send'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_authToken',

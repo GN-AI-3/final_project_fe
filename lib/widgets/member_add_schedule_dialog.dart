@@ -49,7 +49,7 @@ class _MemberAddScheduleDialogState extends State<MemberAddScheduleDialog> {
 
   Future<void> _loadContracts() async {
     try {
-      final contracts = await _ptContractService.getContractMembers('ACTIVE');
+      final contracts = await _ptContractService.getContractMembers();
       if (mounted) {
         setState(() => _contracts = contracts);
       }

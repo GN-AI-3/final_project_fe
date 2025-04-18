@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../models/meeting.dart';
 import '../services/schedule_service.dart';
-import 'custom_toast.dart';
+import '../widgets/custom_toast.dart';
 
 class MemberNoShowDialog extends StatefulWidget {
-  final Meeting meeting;
   final ScheduleService scheduleService;
+  final Meeting meeting;
   final VoidCallback onNoShowProcessed;
 
   const MemberNoShowDialog({
     super.key,
-    required this.meeting,
     required this.scheduleService,
+    required this.meeting,
     required this.onNoShowProcessed,
   });
 
@@ -21,10 +21,14 @@ class MemberNoShowDialog extends StatefulWidget {
 }
 
 class _MemberNoShowDialogState extends State<MemberNoShowDialog> {
-  final TextEditingController _reasonController = TextEditingController(
-    text: '부재중',
-  );
+  final TextEditingController _reasonController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reasonController.text = '회원 사정';
+  }
 
   @override
   void dispose() {
@@ -33,33 +37,31 @@ class _MemberNoShowDialogState extends State<MemberNoShowDialog> {
   }
 
   Future<void> _processNoShow() async {
-    if (widget.meeting.scheduleId == null) {
+    if (_reasonController.text.isEmpty) {
       CustomToast.show(
         context: context,
-        message: '일정 ID가 없습니다.',
+        message: '불참 사유를 입력해주세요.',
         type: ToastType.error,
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       await widget.scheduleService.noShowSchedule(
-        widget.meeting.scheduleId!,
+        scheduleId: widget.meeting.scheduleId!,
         reason: _reasonController.text,
       );
 
       if (mounted) {
-        Navigator.pop(context);
-        widget.onNoShowProcessed();
         CustomToast.show(
           context: context,
           message: '불참 처리가 완료되었습니다.',
           type: ToastType.success,
         );
+        widget.onNoShowProcessed();
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -71,49 +73,65 @@ class _MemberNoShowDialogState extends State<MemberNoShowDialog> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('불참 처리'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('${widget.meeting.eventName} 일정을 불참 처리하시겠습니까?'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _reasonController,
-            decoration: const InputDecoration(
-              labelText: '불참 사유',
-              hintText: '부재중',
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '불참 처리',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text('일정: ${widget.meeting.eventName}'),
+            const SizedBox(height: 8),
+            Text(
+              '시작: ${_formatDateTime(widget.meeting.from)}\n'
+              '종료: ${_formatDateTime(widget.meeting.to)}',
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _reasonController,
+              decoration: const InputDecoration(
+                labelText: '불참 사유',
+                hintText: '불참 사유를 입력하세요',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _processNoShow,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('불참 처리'),
+              ),
+            ),
+          ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text('취소'),
-        ),
-        TextButton(
-          onPressed: _isLoading ? null : _processNoShow,
-          child:
-              _isLoading
-                  ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                  : const Text('확인'),
-        ),
-      ],
     );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}년 ${dateTime.month}월 ${dateTime.day}일 '
+        '${dateTime.hour}시 ${dateTime.minute}분';
   }
 } 

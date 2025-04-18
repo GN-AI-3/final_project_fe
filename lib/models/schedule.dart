@@ -26,7 +26,9 @@ class Schedule {
   final String memberName;
   final int currentPtCount;
   final int totalCount;
+  final int usedCount;
   final int remainingPtCount;
+  final int ptLogId;
 
   Schedule({
     required this.id,
@@ -42,7 +44,9 @@ class Schedule {
     required this.memberName,
     required this.currentPtCount,
     required this.totalCount,
+    required this.usedCount,
     required this.remainingPtCount,
+    required this.ptLogId,
   });
 
   factory Schedule.fromJson(Map<String, dynamic> json) {
@@ -63,8 +67,10 @@ class Schedule {
       memberName: json['memberName'] ?? ScheduleConstants.defaultName,
       currentPtCount: json['currentPtCount'] ?? ScheduleConstants.defaultCount,
       totalCount: json['totalCount'] ?? ScheduleConstants.defaultCount,
+      usedCount: json['usedCount'] ?? ScheduleConstants.defaultCount,
       remainingPtCount:
           json['remainingPtCount'] ?? ScheduleConstants.defaultCount,
+      ptLogId: json['ptLogId'] ?? 0,
     );
   }
 
@@ -96,7 +102,9 @@ class Schedule {
     'memberName': memberName,
     'currentPtCount': currentPtCount,
     'totalCount': totalCount,
+    'usedCount': usedCount,
     'remainingPtCount': remainingPtCount,
+    'ptLogId': ptLogId,
   };
 
   Schedule copyWith({
@@ -113,7 +121,9 @@ class Schedule {
     String? memberName,
     int? currentPtCount,
     int? totalCount,
+    int? usedCount,
     int? remainingPtCount,
+    int? ptLogId,
   }) => Schedule(
     id: id ?? this.id,
     ptContractId: ptContractId ?? this.ptContractId,
@@ -128,7 +138,9 @@ class Schedule {
     memberName: memberName ?? this.memberName,
     currentPtCount: currentPtCount ?? this.currentPtCount,
     totalCount: totalCount ?? this.totalCount,
+    usedCount: usedCount ?? this.usedCount,
     remainingPtCount: remainingPtCount ?? this.remainingPtCount,
+    ptLogId: ptLogId ?? this.ptLogId,
   );
 
   @override

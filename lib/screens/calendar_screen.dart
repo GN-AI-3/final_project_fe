@@ -16,7 +16,8 @@ import '../widgets/no_show_dialog.dart';
 
 class CalendarConstants {
   static const Map<String, String> statusDescriptions = {
-    'scheduled': '[예정된 일정]', // 필터용, 표시 안함
+    'scheduled': '[예정된 일정]',
+    // 필터용, 표시 안함
     'changed': '[변경된 일정]',
     'completed': '[완료된 일정]',
     'cancelled': '[취소된 일정]',
@@ -88,7 +89,7 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  final ScheduleService _scheduleService = ScheduleService();
+  final ScheduleService _scheduleService = TrainerScheduleService();
   final PtContractService _ptContractService = PtContractService();
   List<PtContract> _ptContracts = [];
   final CalendarState _state = CalendarState();
@@ -117,10 +118,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       if (!mounted) return;
 
-      final meetings =
-          schedules.map((schedule) {
-            return _createMeeting(schedule);
-          }).toList();
+      final meetings = schedules.map((schedule) {
+        return _createMeeting(schedule);
+      }).toList();
 
       if (!mounted) return;
 
@@ -142,13 +142,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _loadPtContracts() async {
     try {
-      final contracts = await _ptContractService.getContractMembers('ACTIVE');
+      final contracts = await _ptContractService.getContractMembers();
       if (mounted) {
         setState(() => _ptContracts = contracts);
       }
     } catch (e) {
       if (mounted) {
-        _showError('PT 계약 회원 목록을 불러오는데 실패했습니다', e);
+        CustomToast.show(
+          context: context,
+          message: 'PT 계약 회원 목록을 불러오는데 실패했습니다: $e',
+          type: ToastType.error,
+        );
       }
     }
   }
@@ -162,8 +166,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ].contains(schedule.status.toLowerCase())
             ? '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 - ${schedule.reason}'
             : schedule.status.toLowerCase() == 'scheduled'
-                ? '${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)'
-                : '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)';
+            ? '${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)'
+            : '${_getStatusDescription(schedule.status)} ${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)';
 
     return Meeting(
       eventName,
@@ -364,7 +368,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 throw Exception('오류');
               }
               await _scheduleService.cancelSchedule(
-                meeting.scheduleId!,
+                scheduleId: meeting.scheduleId!,
                 reason: reasonController.text,
               );
               if (mounted) {
@@ -428,7 +432,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (_state.selectedStatus == null) {
         _state.updateFilteredMeetings(_state.meetings);
       } else {
-        final targetDescription = CalendarConstants.statusDescriptions[_state.selectedStatus!.toLowerCase()];
+        final targetDescription =
+            CalendarConstants.statusDescriptions[_state.selectedStatus!
+                .toLowerCase()];
         _state.updateFilteredMeetings(
           _state.meetings.where((meeting) {
             final status = meeting.description?.split('\n')[0];
@@ -488,7 +494,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final cachedStart = _state.lastStartDate;
     final cachedEnd = _state.lastEndDate;
 
-    // 아직 아무 것도 캐시 안 됐거나, 새로 보이는 범위가 기존 범위 밖일 경우에만 새로 로딩
     final needsLoading =
         cachedStart == null ||
         cachedEnd == null ||
@@ -579,9 +584,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   initialSelectedDate: DateTime.now().toLocal(),
                   initialDisplayDate: DateTime.now().toLocal(),
                   dataSource: MeetingDataSource(_state.filteredMeetings),
-                  timeSlotViewSettings: const TimeSlotViewSettings(
-                    timeIntervalHeight: 70,
-                  ),
                   showDatePickerButton: true,
                   showTodayButton: true,
                   onTap: (CalendarTapDetails details) {

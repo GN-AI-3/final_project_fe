@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/env.dart';
@@ -8,82 +10,136 @@ import '../models/pt_contract.dart';
 
 class PtContractService {
   static String get baseUrl => Env.getServerURL();
-  static const String _authToken =
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsImNhcmVlciI6Iu2XrOyKpO2KuOugiOydtOuEiCAxMOuFhCIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoidHJhaW5lcjEiLCJpZCI6MSwidXNlclR5cGUiOiJUUkFJTkVSIiwiY2VydGlmaWNhdGlvbnMiOlsi7IOd7Zmc7Iqk7Y-s7Lig7KeA64-E7IKsIDLquIkiLCLqsbTqsJXsmrTrj5nqtIDrpqzsgqwiXSwiZW1haWwiOiJ0cmFpbmVyQGV4YW1wbGUuY29tIiwic3BlY2lhbGl0aWVzIjpbIuyytOykkeqwkOufiSIsIuq3vOugpeqwle2ZlCIsIuyekOyEuOq1kOyglSJdLCJpYXQiOjE3NDQ2MDIzNjQsImV4cCI6MTc0NDk2MjM2NH0.EEfJFA_2oQZukZLRk8ymo6spR1I4SFh6-zh3jN0w9CqKBDuTgtZ_gitTmp7BJzYS';
+  static final String? _authToken = dotenv.env['TRAINER_TOKEN'];
+  static const String _endpoint = '/api/pt_contracts';
 
-  static const String _membersEndpoint = '/api/pt_contracts/members';
-  static const Map<String, String> _defaultHeaders = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $_authToken',
-  };
-
-  Future<List<PtContract>> getContractMembers([String? status]) async {
+  Future<List<PtContract>> getContractMembers() async {
     try {
-      final queryParams = _buildQueryParams(status);
-      final uri = Uri.parse(
-        '$baseUrl$_membersEndpoint',
-      ).replace(queryParameters: queryParams);
+      final response = await http.get(
+        Uri.parse('$baseUrl$_endpoint/members'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+      );
 
-      final response = await http.get(uri, headers: _defaultHeaders);
-      _validateResponse(response);
-
-      final List<dynamic> jsonList = json.decode(response.body);
-
-      final contracts =
-          jsonList.map((json) {
-            return PtContract.fromJson(json);
-          }).toList();
-
-      return contracts;
-    } catch (e) {
-      _logError('PT 계약 회원 목록 조회 중 오류 발생', e);
-      rethrow;
-    }
-  }
-
-  Map<String, String> _buildQueryParams(String? status) {
-    final params = <String, String>{};
-    if (status != null) {
-      params['status'] = status;
-    }
-    return params;
-  }
-
-  void _validateResponse(http.Response response) {
-    if (response.statusCode != 200) {
-      throw Exception('API 요청 실패: ${response.statusCode}');
-    }
-
-    try {
-      final json = jsonDecode(response.body);
-      if (json is! List) {
-        throw Exception('잘못된 응답 형식: List가 아닙니다');
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
       }
-    } catch (e) {
-      throw Exception('응답 데이터 파싱 실패: $e');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PtContract.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '계약 멤버 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in getContractMembers: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
-  void _logError(String message, dynamic error) {
-    if (kDebugMode) {
-      print('$message: $error');
+  Future<void> updateContractStatus(int ptContractId, String status) async {
+    try {
+      if (kDebugMode) {
+        print('Request status: $status');
+      }
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl$_endpoint/$ptContractId/status?status=$status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '계약 상태 업데이트에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in updateContractStatus: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
-  Future<PtContract> updateContractStatus(
-    int contractId, {
-    required String status,
+  Future<PtContract> updateContract(
+    int ptContractId, {
+    required DateTime endDate,
+    required String memo,
+    required int totalCount,
   }) async {
-    final uri = Uri.parse(
-      '$baseUrl/api/pt_contracts/$contractId/status',
-    ).replace(queryParameters: {'status': status});
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl$_endpoint/$ptContractId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'endDate': endDate.millisecondsSinceEpoch ~/ 1000,
+          'memo': memo,
+          'totalCount': totalCount,
+        }),
+      );
 
-    final response = await http.patch(uri, headers: _defaultHeaders);
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
 
-    if (response.statusCode == 200) {
-      return PtContract.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Failed to update contract status: ${response.body}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return PtContract.fromJson(data);
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '계약 정보 수정에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in updateContract: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 }

@@ -48,7 +48,7 @@ class _NoShowDialogState extends State<NoShowDialog> {
 
     try {
       await widget.scheduleService.noShowSchedule(
-        widget.meeting.scheduleId!,
+        scheduleId: widget.meeting.scheduleId!,
         reason: _reasonController.text,
       );
 

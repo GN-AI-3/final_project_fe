@@ -1,22 +1,22 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../config/env.dart';
 import '../models/schedule.dart';
 
-class ScheduleService {
+/// 일정 관련 서비스의 기본 추상 클래스
+abstract class ScheduleService {
   static String get baseUrl => Env.getServerURL();
-  static const String _authToken =
-      'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsImNhcmVlciI6Iu2XrOyKpO2KuOugiOydtOuEiCAxMOuFhCIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoidHJhaW5lcjEiLCJpZCI6MSwidXNlclR5cGUiOiJUUkFJTkVSIiwiY2VydGlmaWNhdGlvbnMiOlsi7IOd7Zmc7Iqk7Y-s7Lig7KeA64-E7IKsIDLquIkiLCLqsbTqsJXsmrTrj5nqtIDrpqzsgqwiXSwiZW1haWwiOiJ0cmFpbmVyQGV4YW1wbGUuY29tIiwic3BlY2lhbGl0aWVzIjpbIuyytOykkeqwkOufiSIsIuq3vOugpeqwle2ZlCIsIuyekOyEuOq1kOyglSJdLCJpYXQiOjE3NDQ2MDIzNjQsImV4cCI6MTc0NDk2MjM2NH0.EEfJFA_2oQZukZLRk8ymo6spR1I4SFh6-zh3jN0w9CqKBDuTgtZ_gitTmp7BJzYS';
-
   static const String _schedulesEndpoint = '/api/pt_schedules';
-  static const Map<String, String> _defaultHeaders = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $_authToken',
-  };
 
+  /// 서비스에서 사용할 토큰을 반환하는 getter
+  String get token;
+
+  /// 일정 목록을 조회하는 메서드
   Future<List<Schedule>> getSchedules({
     DateTime? startTime,
     DateTime? endTime,
@@ -28,36 +28,44 @@ class ScheduleService {
         '$baseUrl$_schedulesEndpoint',
       ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _defaultHeaders);
-      _validateResponse(response);
-
-      final List<dynamic> data = jsonDecode(response.body);
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
 
       if (kDebugMode) {
-        print('startTime: $startTime');
-        print('endTime: $endTime');
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
       }
 
-      final schedules =
-          data.map((json) {
-            return Schedule.fromJson(json);
-          }).toList();
-
-      return schedules;
-    } catch (e) {
-      _logError('일정 조회 중 오류 발생', e);
-      rethrow;
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Schedule.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '일정 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in getSchedules: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
-  Future<Map<DateTime, List<Schedule>>> getSchedulesByDateRange(
-    DateTime start,
-    DateTime end,
-  ) async {
-    final schedules = await getSchedules(startTime: start, endTime: end);
-    return _groupSchedulesByDate(schedules);
-  }
-
+  /// 일정을 생성하는 메서드
   Future<Schedule> createSchedule({
     required int ptContractId,
     required DateTime startTime,
@@ -70,39 +78,99 @@ class ScheduleService {
         endTime: endTime,
       );
 
+      if (kDebugMode) {
+        print('Request body: ${jsonEncode(requestBody)}');
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl$_schedulesEndpoint'),
-        headers: _defaultHeaders,
-        body: json.encode(requestBody),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(requestBody),
       );
 
-      _validateResponse(response);
-      return Schedule.fromJson(json.decode(response.body));
-    } catch (e) {
-      _logError('일정 생성 중 오류 발생', e);
-      rethrow;
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return Schedule.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '일정 생성에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in createSchedule: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
-  Future<Schedule> cancelSchedule(
-    int scheduleId, {
+  /// 일정을 취소하는 메서드
+  Future<Schedule> cancelSchedule({
+    required int scheduleId,
     String reason = '트레이너와 협의',
   }) async {
     try {
+      if (kDebugMode) {
+        print('Request body: ${jsonEncode({'reason': reason})}');
+      }
+
       final response = await http.patch(
         Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/cancel'),
-        headers: _defaultHeaders,
-        body: json.encode({'reason': reason}),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'reason': reason}),
       );
 
-      _validateResponse(response);
-      return Schedule.fromJson(json.decode(response.body));
-    } catch (e) {
-      _logError('일정 취소 중 오류 발생', e);
-      rethrow;
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (json['currentPtCount'] == null) {
+          json['currentPtCount'] = 0;
+        }
+        return Schedule.fromJson(json);
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '일정 취소에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in cancelSchedule: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
+  /// 일정을 변경하는 메서드
   Future<Map<String, dynamic>> changeSchedule({
     required int scheduleId,
     required DateTime startTime,
@@ -112,38 +180,85 @@ class ScheduleService {
     try {
       final response = await http.patch(
         Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/change'),
-        headers: _defaultHeaders,
-        body: json.encode({
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
           'startTime': startTime.millisecondsSinceEpoch ~/ 1000,
           'endTime': endTime.millisecondsSinceEpoch ~/ 1000,
           'reason': reason,
         }),
       );
 
-      _validateResponse(response);
-      return json.decode(response.body);
-    } catch (e) {
-      _logError('일정 변경 중 오류 발생', e);
-      rethrow;
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '일정 변경에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in changeSchedule: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
-  Future<Schedule> noShowSchedule(
-    int scheduleId, {
+  /// 불참 처리를 하는 메서드
+  Future<Schedule> noShowSchedule({
+    required int scheduleId,
     String reason = '부재중',
   }) async {
     try {
       final response = await http.patch(
         Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/no_show'),
-        headers: _defaultHeaders,
-        body: json.encode({'reason': reason}),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'reason': reason}),
       );
 
-      _validateResponse(response);
-      return Schedule.fromJson(json.decode(response.body));
-    } catch (e) {
-      _logError('불참 처리 중 오류 발생', e);
-      rethrow;
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return Schedule.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '불참 처리에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in noShowSchedule: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
@@ -177,62 +292,27 @@ class ScheduleService {
       'endTime': endTime.millisecondsSinceEpoch ~/ 1000,
     };
   }
+}
 
-  Map<DateTime, List<Schedule>> _groupSchedulesByDate(
-    List<Schedule> schedules,
-  ) {
-    final Map<DateTime, List<Schedule>> scheduleMap = {};
+/// 트레이너용 일정 서비스
+class TrainerScheduleService extends ScheduleService {
+  @override
+  String get token => dotenv.env['TRAINER_TOKEN']!;
+}
 
-    for (var schedule in schedules) {
-      final date = DateTime(
-        schedule.startTime.year,
-        schedule.startTime.month,
-        schedule.startTime.day,
-      );
+/// 회원용 일정 서비스
+class MemberScheduleService extends ScheduleService {
+  // 테스트 환경에서는 환경 변수에서 토큰을 가져옴
+  @override
+  String get token => dotenv.env['TRAINEE_TOKEN']!;
 
-      scheduleMap.putIfAbsent(date, () => []).add(schedule);
-    }
+  // 실제 배포 환경에서는 아래와 같이 사용
+  /*
+  final String _memberToken;
 
-    return scheduleMap;
-  }
+  MemberScheduleService(this._memberToken);
 
-  void _validateResponse(http.Response response) {
-    if (response.statusCode != 200) {
-      try {
-        final errorJson = jsonDecode(response.body);
-        if (errorJson is Map && errorJson.containsKey('message')) {
-          final message = errorJson['message'] as String;
-          final cleanMessage = message.replaceAll(
-            RegExp(r'^[A-Za-z]+Exception:\s*'),
-            '',
-          );
-          throw Exception(cleanMessage);
-        }
-      } catch (e) {
-        // JSON 파싱 실패 시 기본 에러 메시지 사용
-        throw Exception('API 요청 실패: ${response.statusCode}');
-      }
-      throw Exception('API 요청 실패: ${response.statusCode}');
-    }
-
-    try {
-      jsonDecode(response.body);
-    } catch (e) {
-      throw Exception('응답 데이터 파싱 실패: $e');
-    }
-  }
-
-  void _logError(String message, dynamic error) {
-    if (kDebugMode) {
-      if (error is Exception) {
-        final errorMessage = error.toString().replaceAll(
-          RegExp(r'^Exception:\s*'),
-          '',
-        );
-        print(errorMessage);
-      } else {
-        print('$message: $error');
-      }
-    }
-  }
+  @override
+  String get token => _memberToken;
+  */
 }

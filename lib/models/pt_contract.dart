@@ -63,7 +63,7 @@ class PtContract {
       remainingCount: json['remainingCount'] as int? ?? 0,
       memberId: json['memberId'] as int? ?? 0,
       memberName: json['memberName'] as String? ?? '알 수 없음',
-      gender: json['gender'] as String? ?? '',
+      gender: _parseGender(json['gender'] as String?),
       email: json['email'] as String? ?? '',
       phone: json['phone'] as String? ?? '연락처 없음',
       trainerId: json['trainerId'] as int? ?? 0,
@@ -144,5 +144,16 @@ class PtContract {
   @override
   String toString() {
     return 'PtContract(id: $id, memberName: $memberName, status: $status, totalCount: $totalCount, remainingCount: $remainingCount)';
+  }
+
+  static String _parseGender(String? gender) {
+    switch (gender) {
+      case 'M':
+        return '남성';
+      case 'F':
+        return '여성';
+      default:
+        return '알 수 없음';
+    }
   }
 }

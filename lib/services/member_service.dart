@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/env.dart';
@@ -8,54 +10,315 @@ import '../models/member.dart';
 
 class MemberService {
   static String get baseUrl => Env.getServerURL();
-  static const String _authToken = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJwYXNzd29yZCI6IiQyYSQxMCRkNEhjZUNXc1VnL2FUdzQ2am14bDV1SHVwV0h4YjdIeWpTVmUuRzlXSi5LeXdoMkRQVmVyRyIsInBob25lIjoiMDEwMTExMTIyMjIiLCJuYW1lIjoi7J6l6re87JqwIiwiaWQiOjQsInVzZXJUeXBlIjoiTUVNQkVSIiwiZW1haWwiOiJ1c2VyMUB0ZXN0LmNvbSIsImdvYWxzIjpbIldFSUdIVF9MT1NTIl0sImlhdCI6MTc0NDc4NjAxNiwiZXhwIjoxNzQ1MTQ2MDE2fQ.K0hNJEV0TLj0qYdFGpP0KeowQHmZ7kWwzxN_c8gMekjVbb1KnvMiJ0YHhsHLYG49';
-
+  static final String? _authToken = dotenv.env['TRAINEE_TOKEN'];
+  static const String _membersEndpoint = '/api/members';
   static const String _meEndpoint = '/api/member/me';
   static const String _logoutEndpoint = '/api/member/logout';
-  static const Map<String, String> _defaultHeaders = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $_authToken',
-  };
+
+  Future<List<Member>> getMembers() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$_membersEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Member.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '회원 목록 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in getMembers: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<Member> getMember(int memberId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$_membersEndpoint/$memberId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return Member.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '회원 정보 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in getMember: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<Member> createMember({
+    required String name,
+    required String email,
+    required String phone,
+    required String gender,
+  }) async {
+    try {
+      final requestBody = {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'gender': gender,
+      };
+
+      if (kDebugMode) {
+        print('Request body: ${jsonEncode(requestBody)}');
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl$_membersEndpoint'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return Member.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '회원 생성에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in createMember: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<Member> updateMember({
+    required int memberId,
+    required String name,
+    required String email,
+    required String phone,
+    required String gender,
+  }) async {
+    try {
+      final requestBody = {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'gender': gender,
+      };
+
+      if (kDebugMode) {
+        print('Request body: ${jsonEncode(requestBody)}');
+      }
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl$_membersEndpoint/$memberId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return Member.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '회원 정보 수정에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in updateMember: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<void> deleteMember(int memberId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl$_membersEndpoint/$memberId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '회원 삭제에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in deleteMember: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
 
   Future<Member> getMyInfo() async {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl$_meEndpoint'),
-        headers: _defaultHeaders,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
       );
-      _validateResponse(response);
 
-      final json = jsonDecode(response.body);
       if (kDebugMode) {
-        print('회원 정보 응답: $json');
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
       }
-      
-      final member = Member.fromJson(json);
+
+      if (response.statusCode == 200) {
+        return Member.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '회원 정보 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
       if (kDebugMode) {
-        print('파싱된 회원 정보: $member');
+        print('SocketException: $e');
       }
-      
-      return member;
-    } catch (e) {
-      _logError('회원 정보 조회 중 오류 발생', e);
-      rethrow;
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in getMyInfo: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
   Future<Member> updateMyInfo(Member member) async {
     try {
+      if (kDebugMode) {
+        print('Request body: ${jsonEncode(member.toJson())}');
+      }
+
       final response = await http.put(
         Uri.parse('$baseUrl$_meEndpoint'),
-        headers: _defaultHeaders,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
         body: jsonEncode(member.toJson()),
       );
-      _validateResponse(response);
 
-      final json = jsonDecode(response.body);
-      return Member.fromJson(json);
-    } catch (e) {
-      _logError('회원 정보 수정 중 오류 발생', e);
-      rethrow;
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return Member.fromJson(jsonDecode(response.body));
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '회원 정보 수정에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in updateMyInfo: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 
@@ -63,33 +326,37 @@ class MemberService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl$_logoutEndpoint'),
-        headers: _defaultHeaders,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
       );
-      _validateResponse(response);
-    } catch (e) {
-      _logError('로그아웃 중 오류 발생', e);
-      rethrow;
-    }
-  }
 
-  void _validateResponse(http.Response response) {
-    if (response.statusCode != 200) {
-      throw Exception('API 요청 실패: ${response.statusCode}');
-    }
-    
-    try {
-      final json = jsonDecode(response.body);
-      if (json is! Map) {
-        throw Exception('잘못된 응답 형식: Map이 아닙니다');
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
       }
-    } catch (e) {
-      throw Exception('응답 데이터 파싱 실패: $e');
-    }
-  }
 
-  void _logError(String message, dynamic error) {
-    if (kDebugMode) {
-      print('$message: $error');
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '로그아웃에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in logout: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
     }
   }
 }

@@ -145,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildFeatureCard(
                   icon: Icons.chat,
                   title: '채팅하기(회원용)',
-                  description: '챗봇과 실시간 채팅',
+                  description: '24시간 응답 가능한 챗봇',
                   onTap: () => _navigateToScreen(const ChatScreen()),
                 ),
                 const SizedBox(height: 16),

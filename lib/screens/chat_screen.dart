@@ -209,7 +209,9 @@ class ChatScreenState extends State<ChatScreen> {
                   padding: const EdgeInsets.all(ChatConstants.messagePadding),
                   reverse: true,
                   itemBuilder: (context, index) {
-                    return ChatMessageBubble(message: _messages[_messages.length - 1 - index]);
+                    return ChatMessageBubble(
+                      message: _messages[_messages.length - 1 - index],
+                    );
                   },
                 ),
               ),

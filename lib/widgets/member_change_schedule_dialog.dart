@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/meeting.dart';
 import '../services/schedule_service.dart';
-import 'custom_toast.dart';
+import '../widgets/custom_toast.dart';
 
 class MemberChangeScheduleDialog extends StatefulWidget {
   final ScheduleService scheduleService;
@@ -17,24 +17,22 @@ class MemberChangeScheduleDialog extends StatefulWidget {
   });
 
   @override
-  State<MemberChangeScheduleDialog> createState() => _MemberChangeScheduleDialogState();
+  State<MemberChangeScheduleDialog> createState() =>
+      _MemberChangeScheduleDialogState();
 }
 
 class _MemberChangeScheduleDialogState extends State<MemberChangeScheduleDialog> {
-  DateTime? _selectedDate;
-  String _selectedAmPm = '오전';
-  int _selectedHour = 9;
-  final TextEditingController _reasonController = TextEditingController(
-    text: '회원과 협의',
-  );
+  final TextEditingController _reasonController = TextEditingController();
+  DateTime? _selectedStartTime;
+  DateTime? _selectedEndTime;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = widget.meeting.from;
-    _selectedHour = widget.meeting.from.hour;
-    _selectedAmPm = _selectedHour < 12 ? '오전' : '오후';
-    _selectedHour = _selectedHour % 12 == 0 ? 12 : _selectedHour % 12;
+    _selectedStartTime = widget.meeting.from;
+    _selectedEndTime = widget.meeting.to;
+    _reasonController.text = '회원 사정';
   }
 
   @override
@@ -43,43 +41,77 @@ class _MemberChangeScheduleDialogState extends State<MemberChangeScheduleDialog>
     super.dispose();
   }
 
-  int _get24Hour() {
-    if (_selectedAmPm == '오후' && _selectedHour != 12) {
-      return _selectedHour + 12;
-    } else if (_selectedAmPm == '오전' && _selectedHour == 12) {
-      return 0;
+  Future<void> _selectStartTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedStartTime!),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedStartTime = DateTime(
+          _selectedStartTime!.year,
+          _selectedStartTime!.month,
+          _selectedStartTime!.day,
+          picked.hour,
+          picked.minute,
+        );
+      });
     }
-    return _selectedHour;
   }
 
-  bool _isValid() {
-    if (_selectedDate == null) {
-      return false;
+  Future<void> _selectEndTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedEndTime!),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedEndTime = DateTime(
+          _selectedEndTime!.year,
+          _selectedEndTime!.month,
+          _selectedEndTime!.day,
+          picked.hour,
+          picked.minute,
+        );
+      });
     }
-    return true;
   }
 
   Future<void> _changeSchedule() async {
-    if (!_isValid()) return;
+    if (_selectedStartTime == null || _selectedEndTime == null) {
+      CustomToast.show(
+        context: context,
+        message: '시작 시간과 종료 시간을 모두 선택해주세요.',
+        type: ToastType.error,
+      );
+      return;
+    }
 
-    final startDateTime = DateTime(
-      _selectedDate!.year,
-      _selectedDate!.month,
-      _selectedDate!.day,
-      _get24Hour(),
-    );
+    if (_reasonController.text.isEmpty) {
+      CustomToast.show(
+        context: context,
+        message: '변경 사유를 입력해주세요.',
+        type: ToastType.error,
+      );
+      return;
+    }
 
-    final endDateTime = startDateTime.add(const Duration(hours: 1));
+    setState(() => _isLoading = true);
 
     try {
       await widget.scheduleService.changeSchedule(
         scheduleId: widget.meeting.scheduleId!,
-        startTime: startDateTime,
-        endTime: endDateTime,
+        startTime: _selectedStartTime!,
+        endTime: _selectedEndTime!,
         reason: _reasonController.text,
       );
 
       if (mounted) {
+        CustomToast.show(
+          context: context,
+          message: '일정이 변경되었습니다.',
+          type: ToastType.success,
+        );
         widget.onScheduleChanged();
         Navigator.pop(context);
       }
@@ -91,135 +123,102 @@ class _MemberChangeScheduleDialogState extends State<MemberChangeScheduleDialog>
           type: ToastType.error,
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
-            ),
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      '일정 변경',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDatePicker(),
-                    Transform.translate(
-                      offset: const Offset(0, -20),
-                      child: _buildTimeSelector(),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _reasonController,
-                      decoration: const InputDecoration(
-                        labelText: '변경 사유',
-                        hintText: '변경 사유를 입력하세요',
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButtons(),
-                  ],
-                ),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '일정 변경',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildDatePicker() {
-    return CalendarDatePicker(
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      onDateChanged: (date) => setState(() => _selectedDate = date),
-    );
-  }
-
-  Widget _buildTimeSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('시작 시간: ', style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 8),
-          DropdownButton<String>(
-            value: _selectedAmPm,
-            items:
-                ['오전', '오후'].map((value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value, style: const TextStyle(fontSize: 16)),
-                  );
-                }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedAmPm = value);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          DropdownButton<int>(
-            value: _selectedHour,
-            items:
-                List.generate(12, (index) => index + 1).map((value) {
-                  return DropdownMenuItem<int>(
-                    value: value,
-                    child: Text('$value', style: const TextStyle(fontSize: 16)),
-                  );
-                }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedHour = value);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          const Text('시', style: TextStyle(fontSize: 16)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('취소'),
+            const SizedBox(height: 16),
+            Text('기존 일정: ${widget.meeting.eventName}'),
+            const SizedBox(height: 8),
+            Text(
+              '시작: ${_formatDateTime(widget.meeting.from)}\n'
+              '종료: ${_formatDateTime(widget.meeting.to)}',
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              '새로운 일정',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _selectStartTime,
+                    child: Text(
+                      _selectedStartTime != null
+                          ? _formatTime(_selectedStartTime!)
+                          : '시작 시간 선택',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _selectEndTime,
+                    child: Text(
+                      _selectedEndTime != null
+                          ? _formatTime(_selectedEndTime!)
+                          : '종료 시간 선택',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _reasonController,
+              decoration: const InputDecoration(
+                labelText: '변경 사유',
+                hintText: '변경 사유를 입력하세요',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _changeSchedule,
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text('일정 변경'),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        ElevatedButton(
-          onPressed: _changeSchedule,
-          child: const Text('변경'),
-        ),
-      ],
+      ),
     );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}년 ${dateTime.month}월 ${dateTime.day}일 '
+        '${dateTime.hour}시 ${dateTime.minute}분';
+  }
+
+  String _formatTime(DateTime dateTime) {
+    return '${dateTime.hour}시 ${dateTime.minute}분';
   }
 } 
