@@ -34,6 +34,9 @@ class PtLogConstants {
 4. 세트
 5. 해당 운동에 대한 피드백(선택 사항)
 6. 오늘 수업에 대한 전반적인 피드백(선택사항)
+
+이곳은 채팅 내역이 남지 않으니 유의해주세요!
+(단, 입력중인 메시지는 유지됩니다.)
 ''';
 }
 
@@ -75,59 +78,10 @@ class PtLogScreenState extends State<PtLogScreen> {
     try {
       _prefs = await SharedPreferences.getInstance();
       _isPrefsInitialized = true;
-      await _loadLogHistory();
       await _loadDraftMessage();
     } catch (e) {
       if (kDebugMode) {
         print('Error initializing SharedPreferences: $e');
-      }
-    }
-  }
-
-  Future<void> _loadLogHistory() async {
-    if (!_isPrefsInitialized || _prefs == null) return;
-
-    try {
-      final logHistory = _prefs!.getString(
-        '${PtLogConstants.logHistoryKey}_${widget.scheduleId}',
-      );
-      if (logHistory != null) {
-        final List<dynamic> decodedMessages = json.decode(logHistory);
-        if (mounted) {
-          setState(() {
-            _messages.clear();
-            _messages.addAll(
-              decodedMessages.map(
-                (msg) => ChatMessage(
-                  content: msg['content'] as String,
-                  role: msg['role'] as String,
-                ),
-              ),
-            );
-          });
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error loading log history: $e');
-      }
-    }
-  }
-
-  Future<void> _saveLogHistory() async {
-    if (!_isPrefsInitialized || _prefs == null) return;
-
-    try {
-      final messagesJson = json.encode(
-        _messages.map((msg) => msg.toJson()).toList(),
-      );
-      await _prefs!.setString(
-        '${PtLogConstants.logHistoryKey}_${widget.scheduleId}',
-        messagesJson,
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving log history: $e');
       }
     }
   }
@@ -222,24 +176,29 @@ class PtLogScreenState extends State<PtLogScreen> {
       _isLoading = true;
     });
 
-    await _saveLogHistory();
-
     try {
       if (kDebugMode) {
         print('Calling _ptLogsService.sendMessage');
       }
-      final response = await _ptLogsService.sendMessage(userMessage, []);
+      final response = await _ptLogsService.sendMessage(
+        userMessage,
+        widget.scheduleId,
+      );
       if (kDebugMode) {
-        print('Received response from service: ${response.content}');
+        print('Received response from service: ${response.finalResponse}');
       }
 
       if (mounted) {
         setState(() {
           _messages.removeLast(); // 로딩 메시지 제거
-          _messages.add(response);
+          _messages.add(
+            ChatMessage(
+              content: response.finalResponse,
+              role: PtLogConstants.assistantRole,
+            ),
+          );
           _isLoading = false;
         });
-        await _saveLogHistory();
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
