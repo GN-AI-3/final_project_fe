@@ -3,16 +3,22 @@ class ChatMessage {
   final String content;
   final String role;
   final DateTime? createdAt;
+  final String? finalResponse;
 
   ChatMessage({
     this.id,
     required this.content,
     required this.role,
     this.createdAt,
+    this.finalResponse,
   });
 
   Map<String, dynamic> toJson() {
-    return {'content': content, 'role': role};
+    return {
+      'content': content,
+      'role': role,
+      'finalResponse': finalResponse,
+    };
   }
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -24,6 +30,7 @@ class ChatMessage {
           json['createdAt'] != null
               ? DateTime.parse(json['createdAt'].toString())
               : null,
+      finalResponse: json['finalResponse'] as String?,
     );
   }
 }

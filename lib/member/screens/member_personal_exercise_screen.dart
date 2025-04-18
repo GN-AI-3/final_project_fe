@@ -3,17 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/chat_message.dart';
-import '../../models/meeting.dart';
 import '../../widgets/chat_input_field.dart';
 import '../../widgets/chat_message_bubble.dart';
-import '../services/member_pt_logs_service.dart';
+import '../services/member_personal_exercise_service.dart';
 
-class MemberPtLogConstants {
+class MemberPersonalExerciseConstants {
   static const String userRole = 'user';
   static const String assistantRole = 'assistant';
   static const String errorMessage = '오류가 발생했습니다: ';
-  static const String appTitle = 'PT 일지 작성';
-  static const String logHistoryKey = 'member_pt_log_history';
+  static const String appTitle = '개인 운동 기록';
+  static const String logHistoryKey = 'member_personal_exercise_history';
 
   static const double messagePadding = 8.0;
   static const double messageMargin = 4.0;
@@ -21,7 +20,7 @@ class MemberPtLogConstants {
   static const double iconSpacing = 8.0;
 
   static const String defaultMessage = '''
-오늘의 PT 일지를 작성하거나 수정하는 화면입니다.
+개인 운동 기록을 작성하는 화면입니다.
 (챗봇의 기능은 하지 않습니다.)
 
 아래 서식에 맞게 작성해주세요.
@@ -31,31 +30,29 @@ class MemberPtLogConstants {
 3. 횟수
 4. 세트
 5. 해당 운동에 대한 피드백(선택 사항)
-6. 오늘 수업에 대한 전반적인 피드백(선택사항)
+6. 오늘 운동에 대한 전반적인 피드백(선택사항)
 
 이곳은 채팅 내역이 남지 않으니 유의해주세요!
 (단, 입력중인 메시지는 유지됩니다.)
 ''';
 }
 
-class MemberPtLogScreen extends StatefulWidget {
-  final int scheduleId;
-  final Meeting meeting;
+class MemberPersonalExerciseScreen extends StatefulWidget {
+  final DateTime selectedDate;
 
-  const MemberPtLogScreen({
+  const MemberPersonalExerciseScreen({
     super.key,
-    required this.scheduleId,
-    required this.meeting,
+    required this.selectedDate,
   });
 
   @override
-  State<MemberPtLogScreen> createState() => MemberPtLogScreenState();
+  State<MemberPersonalExerciseScreen> createState() => MemberPersonalExerciseScreenState();
 }
 
-class MemberPtLogScreenState extends State<MemberPtLogScreen> {
+class MemberPersonalExerciseScreenState extends State<MemberPersonalExerciseScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<ChatMessage> _messages = [];
-  final MemberPtLogsService _ptLogsService = MemberPtLogsService();
+  final MemberPersonalExerciseService _exerciseService = MemberPersonalExerciseService();
   bool _isLoading = false;
   SharedPreferences? _prefs;
   bool _isPrefsInitialized = false;
@@ -66,8 +63,8 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
     _initializePrefs();
     _messages.add(
       ChatMessage(
-        content: MemberPtLogConstants.defaultMessage,
-        role: MemberPtLogConstants.assistantRole,
+        content: MemberPersonalExerciseConstants.defaultMessage,
+        role: MemberPersonalExerciseConstants.assistantRole,
       ),
     );
   }
@@ -89,7 +86,7 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
 
     try {
       final draftMessage = _prefs!.getString(
-        '${MemberPtLogConstants.logHistoryKey}_${widget.scheduleId}_draft',
+        '${MemberPersonalExerciseConstants.logHistoryKey}_${widget.selectedDate.millisecondsSinceEpoch}_draft',
       );
       if (draftMessage != null && mounted) {
         _messageController.text = draftMessage;
@@ -106,7 +103,7 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
 
     try {
       await _prefs!.setString(
-        '${MemberPtLogConstants.logHistoryKey}_${widget.scheduleId}_draft',
+        '${MemberPersonalExerciseConstants.logHistoryKey}_${widget.selectedDate.millisecondsSinceEpoch}_draft',
         _messageController.text,
       );
     } catch (e) {
@@ -119,30 +116,29 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
   void _showToast(String message) {
     final overlay = Overlay.of(context);
     final overlayEntry = OverlayEntry(
-      builder:
-          (context) => Positioned(
-            top: MediaQuery.of(context).size.height * 0.8,
-            left: MediaQuery.of(context).size.width * 0.1,
-            right: MediaQuery.of(context).size.width * 0.1,
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).size.height * 0.8,
+        left: MediaQuery.of(context).size.width * 0.1,
+        right: MediaQuery.of(context).size.width * 0.1,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white),
             ),
           ),
+        ),
+      ),
     );
 
     overlay.insert(overlayEntry);
@@ -163,12 +159,12 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
 
     setState(() {
       _messages.add(
-        ChatMessage(content: userMessage, role: MemberPtLogConstants.userRole),
+        ChatMessage(content: userMessage, role: MemberPersonalExerciseConstants.userRole),
       );
       _messages.add(
         ChatMessage(
           content: '답변을 생성하는 중...',
-          role: MemberPtLogConstants.assistantRole,
+          role: MemberPersonalExerciseConstants.assistantRole,
         ),
       );
       _isLoading = true;
@@ -176,11 +172,11 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
 
     try {
       if (kDebugMode) {
-        print('Calling _ptLogsService.sendMessage');
+        print('Calling _exerciseService.sendMessage');
       }
-      final response = await _ptLogsService.sendMessage(
+      final response = await _exerciseService.sendMessage(
         userMessage,
-        widget.scheduleId,
+        widget.selectedDate,
       );
       if (kDebugMode) {
         print('Received response from service: ${response.finalResponse}');
@@ -191,8 +187,8 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
           _messages.removeLast(); // 로딩 메시지 제거
           _messages.add(
             ChatMessage(
-              content: response.finalResponse,
-              role: MemberPtLogConstants.assistantRole,
+              content: response.finalResponse ?? response.content,
+              role: MemberPersonalExerciseConstants.assistantRole,
             ),
           );
           _isLoading = false;
@@ -208,16 +204,20 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
           _messages.removeLast(); // 로딩 메시지 제거
           _isLoading = false;
         });
-        _showToast('${MemberPtLogConstants.errorMessage}$e');
+        _showToast('${MemberPersonalExerciseConstants.errorMessage}$e');
       }
     }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.year}년 ${date.month}월 ${date.day}일';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(MemberPtLogConstants.appTitle),
+        title: const Text(MemberPersonalExerciseConstants.appTitle),
         forceMaterialTransparency: true,
         backgroundColor: const Color(0xfff0f0f0),
       ),
@@ -239,32 +239,11 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.meeting.eventName,
+                      _formatDate(widget.selectedDate),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '날짜: ${widget.meeting.from}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '시간: ${widget.meeting.from} ~ ${widget.meeting.to}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
@@ -277,7 +256,7 @@ class MemberPtLogScreenState extends State<MemberPtLogScreen> {
                     final message = _messages[index];
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                        vertical: MemberPtLogConstants.messagePadding,
+                        vertical: MemberPersonalExerciseConstants.messagePadding,
                       ),
                       child: ChatMessageBubble(
                         message: message,

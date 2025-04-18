@@ -9,6 +9,7 @@ import '../../trainer/services/schedule_service.dart';
 import '../../widgets/custom_dialog.dart';
 import '../widgets/member_change_schedule_dialog.dart';
 import '../widgets/member_no_show_dialog.dart';
+import '../screens/member_personal_exercise_screen.dart';
 
 class MemberCalendarConstants {
   static const Map<String, String> statusDescriptions = {
@@ -521,8 +522,14 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    // 버튼 클릭 시 동작 추가
-                    // 개인 운동 기록 저장 기능
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MemberPersonalExerciseScreen(
+                          selectedDate: _selectedDate,
+                        ),
+                      ),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
