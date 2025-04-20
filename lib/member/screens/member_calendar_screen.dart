@@ -2,14 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
-
+import '../../models/exercise_record.dart';
 import '../../models/meeting.dart';
 import '../../models/schedule.dart';
 import '../../trainer/services/schedule_service.dart';
 import '../../widgets/custom_dialog.dart';
+import '../screens/member_personal_exercise_screen.dart';
+import '../services/member_personal_exercise_service.dart';
 import '../widgets/member_change_schedule_dialog.dart';
 import '../widgets/member_no_show_dialog.dart';
-import '../screens/member_personal_exercise_screen.dart';
 
 class MemberCalendarConstants {
   static const Map<String, String> statusDescriptions = {
@@ -77,6 +78,8 @@ class MemberCalendarScreen extends StatefulWidget {
 
 class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
   final ScheduleService _scheduleService = MemberScheduleService();
+  final MemberPersonalExerciseService _exerciseService =
+      MemberPersonalExerciseService();
   final MemberCalendarState _state = MemberCalendarState();
   DateTime _selectedDate = DateTime.now();
   bool _isButtonVisible = false;
@@ -104,11 +107,38 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         endTime: queryEndDate,
       );
 
+      final exerciseRecords = await _exerciseService.getExerciseRecords(
+        queryStartDate ?? DateTime.now(),
+        queryEndDate ?? DateTime.now().add(const Duration(days: 30)),
+      );
+
       if (!mounted) return;
 
-      final meetings = schedules.map<Meeting>((schedule) {
-        return createMeeting(schedule);
-      }).toList();
+      final meetings =
+          schedules.map<Meeting>((schedule) {
+            return createMeeting(schedule);
+          }).toList();
+
+      // 운동 기록을 Meeting 객체로 변환하여 추가
+      for (var record in exerciseRecords) {
+        final date = DateTime.parse(record.date);
+        if (record.records.isNotEmpty) {
+          meetings.add(
+            Meeting(
+              '${date.month}월 ${date.day}일의 개인운동 기록',
+              date,
+              date,
+              const Color(0xff2746f8),
+              true,
+              textStyle: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w400,
+              ),
+              description: '운동 기록',
+            ),
+          );
+        }
+      }
 
       if (!mounted) return;
 
@@ -145,10 +175,14 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
       eventName,
       schedule.startTime,
       schedule.endTime,
-      Colors.blue,
+      Colors.green,
       false,
       id: schedule.id,
       scheduleId: schedule.id,
+      textStyle: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w400,
+      ),
       description:
           schedule.status.toLowerCase() == 'scheduled'
               ? '남은 PT: ${schedule.remainingPtCount}회'
@@ -179,14 +213,134 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     CustomDialog.show(
       context: context,
       title: meeting.eventName,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('시작 일시: ${_formatDateTime(meeting.from)}'),
-          Text('종료 일시: ${_formatDateTime(meeting.to)}'),
-          if (meeting.description != null) Text('${meeting.description}'),
-        ],
+      content: Container(
+        width: double.infinity,
+        alignment: Alignment.centerLeft,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (meeting.description != '운동 기록') ...[
+              Text('시작 일시: ${_formatDateTime(meeting.from)}'),
+              Text('종료 일시: ${_formatDateTime(meeting.to)}'),
+              const SizedBox(height: 8),
+              Text('${meeting.description}'),
+            ],
+            if (meeting.description == '운동 기록') ...[
+              const Text(
+                '운동 기록 상세',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              FutureBuilder<List<GroupedExerciseRecord>>(
+                future: _exerciseService.getExerciseRecords(
+                  meeting.from,
+                  meeting.to,
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Text('오류가 발생했습니다: ${snapshot.error}');
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Text('운동 기록이 없습니다.');
+                  }
+
+                  final records = snapshot.data!;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children:
+                        records.expand((record) => record.records).map((
+                          exercise,
+                        ) {
+                          return GestureDetector(
+                            onLongPress: () {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (context) => SafeArea(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: const Icon(Icons.edit),
+                                        title: const Text('기록 수정'),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          _showExerciseRecordEditDialog(
+                                            exercise,
+                                            DateTime.parse(records.first.date),
+                                          );
+                                        },
+                                      ),
+                                      ListTile(
+                                        leading: const Icon(Icons.delete, color: Colors.red),
+                                        title: const Text(
+                                          '기록 삭제',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          // TODO: 삭제 기능 구현
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('삭제 기능은 아직 구현되지 않았습니다.'),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      exercise.exerciseName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    if (exercise.recordData.isNotEmpty) ...[
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                        children: [
+                                          _buildExerciseDetail('무게', '${exercise.recordData['weight']}kg'),
+                                          _buildExerciseDetail('횟수', exercise.recordData['reps'].toString()),
+                                          _buildExerciseDetail('세트', exercise.recordData['sets'].toString()),
+                                        ],
+                                      ),
+                                    ],
+                                    if (exercise.memoData.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        '메모:',
+                                        style: TextStyle(fontWeight: FontWeight.w400),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(exercise.memoData['memo'] ?? ''),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                  );
+                },
+              ),
+            ],
+          ],
+        ),
       ),
       actions: [
         if (meeting.description?.contains('[완료된 일정]') ?? false)
@@ -197,13 +351,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
             },
             child: const Text('PT 기록 보기'),
           ),
-        // if (meeting.description?.contains('[완료된 일정]') ?? false && !meeting.isDeducted)
-        //   TextButton(
-        //     onPressed: () {
-        //       Navigator.pop(context);
-        //     },
-        //     child: const Text('PT 횟수 차감'),
-        //   ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('닫기'),
@@ -285,6 +432,116 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
           }
         },
       ),
+    );
+  }
+
+  void _showExerciseRecordEditDialog(ExerciseRecord exercise, DateTime date) {
+    final TextEditingController repsController = TextEditingController(
+      text: exercise.recordData['reps']?.toString() ?? '',
+    );
+    final TextEditingController setsController = TextEditingController(
+      text: exercise.recordData['sets']?.toString() ?? '',
+    );
+    final TextEditingController weightController = TextEditingController(
+      text: exercise.recordData['weight']?.toString() ?? '',
+    );
+    final TextEditingController memoController = TextEditingController(
+      text: exercise.memoData['memo']?.toString() ?? '',
+    );
+
+    CustomDialog.show(
+      context: context,
+      title: '${exercise.exerciseName} 기록 수정',
+      content: SizedBox(
+        width: double.infinity,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: repsController,
+              decoration: const InputDecoration(
+                labelText: '횟수',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: setsController,
+              decoration: const InputDecoration(
+                labelText: '세트',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: weightController,
+              decoration: const InputDecoration(
+                labelText: '무게',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: memoController,
+              decoration: const InputDecoration(
+                labelText: '메모',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () async {
+            try {
+              final memberId = _exerciseService.memberId;
+              if (memberId == null) {
+                throw Exception('멤버 ID를 찾을 수 없습니다.');
+              }
+
+              final recordData = {
+                if (repsController.text.isNotEmpty) 'reps': int.parse(repsController.text),
+                if (setsController.text.isNotEmpty) 'sets': int.parse(setsController.text),
+                if (weightController.text.isNotEmpty) 'weight': double.parse(weightController.text),
+              };
+
+              final memoData = {
+                'memo': memoController.text.isEmpty ? '' : memoController.text,
+              };
+
+              await _exerciseService.updateExerciseRecord(
+                memberId: memberId,
+                exerciseId: exercise.exerciseId,
+                date: date,
+                recordData: recordData,
+                memoData: memoData,
+              );
+
+              if (mounted) {
+                Navigator.pop(context);
+                _loadMeetings();
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('오류가 발생했습니다: $e')),
+                );
+              }
+            }
+          },
+          child: const Text('저장'),
+        ),
+      ],
     );
   }
 
@@ -389,7 +646,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: const Text('깔쌈한 제목'),
+        title: const Text('캘린더'),
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
@@ -423,30 +680,63 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                   ),
                   headerDateFormat: ' yyyy년 M월',
                   timeZone: 'Korea Standard Time',
-                  scheduleViewSettings: const ScheduleViewSettings(
-                    hideEmptyScheduleWeek: true,
-                    appointmentItemHeight: 70,
-                    appointmentTextStyle: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    weekHeaderSettings: WeekHeaderSettings(
-                      startDateFormat: 'M월 d일 ',
-                      endDateFormat: 'd일',
-                      textAlign: TextAlign.start,
-                    ),
-                    monthHeaderSettings: MonthHeaderSettings(
-                      monthFormat: 'yyyy년 M월',
-                      height: 70,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
                   monthViewSettings: const MonthViewSettings(
                     showAgenda: true,
                     agendaViewHeight: 350,
                     appointmentDisplayCount: 2,
                     agendaItemHeight: 50,
                   ),
+                  appointmentBuilder: (BuildContext context,
+                      CalendarAppointmentDetails calendarAppointmentDetails) {
+                    final Meeting meeting = calendarAppointmentDetails.appointments.first as Meeting;
+                    return Container(
+                      width: calendarAppointmentDetails.bounds.width,
+                      height: calendarAppointmentDetails.bounds.height,
+                      decoration: BoxDecoration(
+                        color: meeting.background,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: meeting.description == '운동 기록' 
+                        ? Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              meeting.eventName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                meeting.eventName,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                '${meeting.from.hour.toString().padLeft(2, '0')}:${meeting.from.minute.toString().padLeft(2, '0')} - ${meeting.to.hour.toString().padLeft(2, '0')}:${meeting.to.minute.toString().padLeft(2, '0')}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                    );
+                  },
                   selectionDecoration: BoxDecoration(
                     color: Colors.transparent,
                     border: Border.all(
@@ -525,9 +815,10 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => MemberPersonalExerciseScreen(
-                          selectedDate: _selectedDate,
-                        ),
+                        builder:
+                            (context) => MemberPersonalExerciseScreen(
+                              selectedDate: _selectedDate,
+                            ),
                       ),
                     );
                   },
@@ -553,6 +844,28 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExerciseDetail(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 }

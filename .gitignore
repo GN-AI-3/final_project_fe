@@ -47,3 +47,4 @@ app.*.map.json
 # Firebase Android config
 android/app/google-services.json
 .env
+/upload-keystore.jks

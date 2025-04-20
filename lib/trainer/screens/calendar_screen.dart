@@ -9,6 +9,7 @@ import '../../widgets/custom_dialog.dart';
 import '../../widgets/custom_toast.dart';
 import '../screens/pt_log_screen.dart';
 import '../services/pt_contract_service.dart';
+import '../services/pt_logs_service.dart';
 import '../services/schedule_service.dart';
 import '../widgets/add_schedule_dialog.dart';
 import '../widgets/change_schedule_dialog.dart';
@@ -91,6 +92,7 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   final ScheduleService _scheduleService = TrainerScheduleService();
   final PtContractService _ptContractService = PtContractService();
+  final PtLogsService _ptLogsService = PtLogsService();
   List<PtContract> _ptContracts = [];
   final CalendarState _state = CalendarState();
 
@@ -236,26 +238,122 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       actions: [
-        if (meeting.description?.contains('[완료된 일정]') ?? false)
+        if (meeting.description?.contains('[완료된 일정]') ?? false) ...[
+          TextButton(
+            onPressed: () async {
+              try {
+                final exercises = await _ptLogsService.getPtLogExercises(meeting.scheduleId!);
+                if (!mounted) return;
+                
+                Navigator.pop(context);
+                _showPtLogDetails(exercises);
+              } catch (e) {
+                if (!mounted) return;
+                CustomToast.show(
+                  context: context,
+                  message: e.toString(),
+                  type: ToastType.error,
+                );
+              }
+            },
+            child: const Text('일지 조회'),
+          ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder:
-                      (context) => PtLogScreen(
-                        scheduleId: meeting.scheduleId!,
-                        meeting: meeting,
-                      ),
+                  builder: (context) => PtLogScreen(
+                    scheduleId: meeting.scheduleId!,
+                    meeting: meeting,
+                  ),
                 ),
               );
             },
             child: const Text('PT 기록하기'),
           ),
+        ],
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('닫기'),
+        ),
+      ],
+    );
+  }
+
+  void _showPtLogDetails(List<PtLogExercise> exercises) {
+    CustomDialog.show(
+      context: context,
+      title: 'PT 일지',
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: exercises.map((exercise) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    exercise.exerciseName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildExerciseDetail('무게', '${exercise.weight}kg'),
+                      _buildExerciseDetail('횟수', exercise.reps.toString()),
+                      _buildExerciseDetail('세트', exercise.sets.toString()),
+                      _buildExerciseDetail('휴식', '${exercise.restTime}초'),
+                    ],
+                  ),
+                  if (exercise.feedback?.isNotEmpty ?? false) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      '피드백:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(exercise.feedback ?? ''),
+                  ],
+                ],
+              ),
+            ),
+          )).toList(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('닫기'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExerciseDetail(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -567,7 +665,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     showAgenda: true,
                     agendaViewHeight: 350,
                     appointmentDisplayCount: 6,
-
                   ),
                   selectionDecoration: BoxDecoration(
                     color: Colors.transparent,

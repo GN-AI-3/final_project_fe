@@ -8,6 +8,34 @@ import 'package:http/http.dart' as http;
 import '../../config/env.dart';
 import '../../models/pt_log.dart';
 
+class PtLogExercise {
+  final String exerciseName;
+  final int sets;
+  final int reps;
+  final int weight;
+  final int restTime;
+  final String? feedback;
+
+  PtLogExercise({
+    required this.exerciseName,
+    required this.sets,
+    required this.reps,
+    required this.weight,
+    required this.restTime,
+    this.feedback,
+  });
+
+  factory PtLogExercise.fromJson(Map<String, dynamic> json) {
+    return PtLogExercise(
+      exerciseName: json['exerciseName'] as String,
+      sets: json['sets'] as int,
+      reps: json['reps'] as int,
+      weight: json['weight'] as int,
+      restTime: json['restTime'] as int,
+      feedback: json['feedback'] as String?,
+    );
+  }
+}
 
 class PtLogsService {
   static String get baseUrl => Env.getServerURL();
@@ -60,6 +88,45 @@ class PtLogsService {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         print('Error in sendMessage: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<List<PtLogExercise>> getPtLogExercises(int ptScheduleId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pt-log-exercises/pt-schedule/$ptScheduleId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_authToken',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => PtLogExercise.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'PT 일지 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in getPtLogExercises: $e');
         print('Stack trace: $stackTrace');
       }
       throw Exception('Error: $e');

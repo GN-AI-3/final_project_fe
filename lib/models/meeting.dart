@@ -10,6 +10,7 @@ class Meeting {
     int? id,
     this.description,
     this.scheduleId,
+    this.textStyle,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch;
 
   final int id;
@@ -20,4 +21,5 @@ class Meeting {
   Color background;
   bool isAllDay;
   String? description;
+  TextStyle? textStyle;
 } 
