@@ -1,7 +1,12 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:math';
+import 'dart:typed_data';
+import 'dart:ffi';
 
 class FCMService {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -9,38 +14,124 @@ class FCMService {
 
   static const String fcmTokenKey = 'fcm_token';
 
-  static const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'high_importance_channel',
-    '중요 알림',
-    description: '중요한 알림을 위한 채널',
-    importance: Importance.high,
-  );
+  // 알림 채널 ID
+  static const String channelId = 'high_importance_channel';
+  static const String channelName = '중요 알림';
+  static const String channelDescription = '중요한 알림을 위한 채널';
+  
+  // 추가 채널 (그룹화 알림용)
+  static const String groupChannelId = 'grouped_channel';
+  static const String groupChannelName = '그룹 알림';
+  static const String groupChannelDescription = '여러 알림을 그룹화하는 채널';
+  
+  // 알림 그룹 키
+  static const String notificationGroupKey = 'com.example.gymggun.NOTIFICATION_GROUP';
+
+  // 알림 채널 정의
+  static final channels = <AndroidNotificationChannel>[
+    AndroidNotificationChannel(
+      channelId,
+      channelName,
+      description: channelDescription,
+      importance: Importance.max,
+      enableVibration: true,
+      enableLights: true,
+      ledColor: Colors.blue,
+    ),
+    AndroidNotificationChannel(
+      groupChannelId,
+      groupChannelName,
+      description: groupChannelDescription,
+      importance: Importance.high,
+    ),
+  ];
+
+  // 다양한 스타일의 알림 타입
+  static const String notificationTypeDefault = 'default';
+  static const String notificationTypeImage = 'image';
+  static const String notificationTypeChat = 'chat';
+  static const String notificationTypeProgress = 'progress';
+  static const String notificationTypeMedia = 'media';
+  static const String notificationTypePtSchedule = 'pt_schedule'; // PT 일정 알림 타입 추가
+  
+  // 미디어 컨트롤 액션 ID
+  static const String _actionPause = 'pause';
+  static const String _actionResume = 'resume';
+  static const String _actionStop = 'stop';
 
   static Future<void> initialize() async {
+    // FCM 디버그 로그 활성화
+    if (kDebugMode) {
+      print('FCM 서비스 초기화 시작');
+    }
+    
     // 백그라운드 메시지 핸들러 등록
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // 알림 권한 요청
-    await FirebaseMessaging.instance.requestPermission();
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+    
+    if (kDebugMode) {
+      print('FCM 알림 권한 상태: ${settings.authorizationStatus}');
+    }
 
     // flutter_local_notifications 초기화
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings();
+    const iosInit = DarwinInitializationSettings(
+      requestSoundPermission: true,
+      requestBadgePermission: true,
+      requestAlertPermission: true,
+    );
     const initSettings = InitializationSettings(
       android: androidInit,
       iOS: iosInit,
     );
-    await flutterLocalNotificationsPlugin.initialize(initSettings);
+    
+    // 알림 초기화 (알림 클릭 이벤트 처리 포함)
+    await flutterLocalNotificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // 알림 탭 처리
+        if (kDebugMode) {
+          print('알림 탭: ${response.payload}');
+        }
+        // TODO: 여기에 알림 탭 처리 로직 추가
+      },
+    );
 
-    // 알림 채널 등록
-    await flutterLocalNotificationsPlugin
+    // 알림 채널들 등록
+    final androidPlugin = flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
+            AndroidFlutterLocalNotificationsPlugin>();
+            
+    if (androidPlugin != null) {
+      for (var channel in channels) {
+        await androidPlugin.createNotificationChannel(channel);
+        if (kDebugMode) {
+          print('채널 생성 완료: ${channel.id}');
+        }
+      }
+    }
 
     // 포그라운드 메시지 수신 리스너
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (kDebugMode) {
+        print('포그라운드 메시지 수신: ${message.data}');
+        print('알림 제목: ${message.notification?.title}');
+        print('알림 내용: ${message.notification?.body}');
+      }
+      
+      // 즉시 알림 표시
+      _handleForegroundMessage(message);
+    });
 
     // FCM 토큰 가져오기 및 저장
     await refreshAndSaveFCMToken();
@@ -52,6 +143,10 @@ class FCMService {
         print('FCM 토큰 갱신됨: $token');
       }
     });
+    
+    if (kDebugMode) {
+      print('FCM 서비스 초기화 완료');
+    }
   }
 
   static Future<void> _firebaseMessagingBackgroundHandler(
@@ -60,29 +155,62 @@ class FCMService {
     if (kDebugMode) {
       print('백그라운드 메시지 수신: ${message.notification?.title}');
     }
-  }
-
-  static void _handleForegroundMessage(RemoteMessage message) {
-    if (kDebugMode) {
-      print('포그라운드 메시지 수신: ${message.data}');
-    }
-
+    
+    // 앱이 백그라운드에서도 알림을 표시하기 위해 직접 알림 표시
     final notification = message.notification;
     if (notification != null) {
       flutterLocalNotificationsPlugin.show(
         notification.hashCode,
-        notification.title ?? '',
+        notification.title ?? '새 알림',
         notification.body ?? '',
         NotificationDetails(
           android: AndroidNotificationDetails(
-            channel.id,
-            channel.name,
-            channelDescription: channel.description,
-            importance: Importance.high,
-            icon: '@mipmap/ic_launcher',
+            channels[0].id,
+            channels[0].name,
+            channelDescription: channels[0].description,
+            importance: Importance.max,
+            priority: Priority.high,
           ),
         ),
       );
+    }
+  }
+
+  static void _handleForegroundMessage(RemoteMessage message) {
+    if (kDebugMode) {
+      print('포그라운드 메시지 처리 시작');
+    }
+
+    // 직접 알림 표시 (먼저 기본 알림부터 표시)
+    final notification = message.notification;
+    if (notification != null) {
+      flutterLocalNotificationsPlugin.show(
+        notification.hashCode,
+        notification.title ?? '새 알림',
+        notification.body ?? '',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channels[0].id,
+            channels[0].name,
+            channelDescription: channels[0].description,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+        ),
+      );
+      
+      // 추가적으로 커스텀 알림 표시 시도
+      try {
+        showCustomNotification(message);
+      } catch (e) {
+        if (kDebugMode) {
+          print('커스텀 알림 표시 오류: $e');
+        }
+      }
+    } else {
+      if (kDebugMode) {
+        print('알림 데이터가 없는 메시지: ${message.data}');
+      }
     }
   }
 
@@ -134,5 +262,477 @@ class FCMService {
         print('FCM 토큰 저장 실패: $e');
       }
     }
+  }
+
+  // FCM 메시지 포맷에 기반한 커스텀 알림 표시
+
+  static Future<void> showCustomNotification(RemoteMessage message) async {
+    if (kDebugMode) {
+      print('커스텀 알림 표시 시작');
+    }
+    
+    final notification = message.notification;
+    final data = message.data;
+    
+    if (notification == null) {
+      if (kDebugMode) {
+        print('알림 데이터 없음, 처리 중단');
+      }
+      return;
+    }
+    
+    int id = notification.hashCode;
+    String title = notification.title ?? '새 알림';
+    String body = notification.body ?? '';
+    
+    // PT 일정 알림인 경우 바로 테스트 메소드로 처리
+    if (title.contains('PT 일정') || title.contains('PT 회원 명단')) {
+      try {
+        // 스타일 정보 생성 - 확장 가능한 텍스트 형식
+        final BigTextStyleInformation bigTextStyleInformation = BigTextStyleInformation(
+          body,
+          htmlFormatBigText: false,
+          contentTitle: title,
+          htmlFormatContentTitle: false,
+          summaryText: '탭하여 전체 내용 보기',
+          htmlFormatSummaryText: false,
+        );
+
+        await flutterLocalNotificationsPlugin.show(
+          id,
+          title,
+          body,
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              channels[0].id,
+              channels[0].name,
+              channelDescription: channels[0].description,
+              importance: Importance.max,
+              priority: Priority.high,
+              styleInformation: bigTextStyleInformation,
+              ongoing: false,
+              autoCancel: true,
+              showWhen: true,
+              visibility: NotificationVisibility.public,
+            ),
+            iOS: const DarwinNotificationDetails(
+              presentAlert: true,
+              presentBadge: true,
+              presentSound: true,
+              interruptionLevel: InterruptionLevel.timeSensitive,
+            ),
+          ),
+        );
+        
+        if (kDebugMode) {
+          print('PT 일정 알림 표시 성공');
+        }
+        return;
+      } catch (e) {
+        if (kDebugMode) {
+          print('PT 일정 알림 표시 실패: $e');
+        }
+        // 실패 시 기본 알림으로 대체
+        await _showDefaultNotification(id, title, body);
+        return;
+      }
+    }
+    
+    // 나머지 알림 타입 처리
+    // 알림 타입 확인 (PT 일정 알림 특별 처리)
+    String? notificationType;
+    
+    // 제목에 "PT 일정" 또는 "PT 회원 명단"이 포함되어 있으면 PT 일정 알림으로 처리
+    if (title.contains('PT 일정') || title.contains('PT 회원 명단')) {
+      notificationType = notificationTypePtSchedule;
+      if (kDebugMode) {
+        print('PT 일정 알림 감지: $title');
+      }
+    } else {
+      notificationType = data['type'] ?? notificationTypeDefault;
+      if (kDebugMode) {
+        print('일반 알림 타입: $notificationType');
+      }
+    }
+    
+    try {
+      // 알림 타입에 따라 다른 스타일 적용
+      switch (notificationType) {
+        case notificationTypePtSchedule:
+          await _showPtScheduleNotification(id, title, body);
+          break;
+        case notificationTypeImage:
+          if (data.containsKey('image_url')) {
+            await _showImageNotification(id, title, body);
+          } else {
+            await _showDefaultNotification(id, title, body);
+          }
+          break;
+        case notificationTypeChat:
+          await _showChatNotification(id, title, body);
+          break;
+        case notificationTypeProgress:
+          await _showProgressNotification(id, title, body);
+          break;
+        case notificationTypeMedia:
+          await _showMediaNotification(id, title, body);
+          break;
+        default:
+          await _showDefaultNotification(id, title, body);
+      }
+      
+      if (kDebugMode) {
+        print('알림 표시 완료: $title');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('알림 표시 중 오류: $e');
+      }
+      // 오류 발생 시 기본 알림으로 폴백
+      await _showDefaultNotification(id, title, body);
+    }
+  }
+  
+  // PT 일정 알림 스타일
+  static Future<void> _showPtScheduleNotification(int id, String title, String body) async {
+    // 알림 스타일 설정 (BigTextStyle 사용)
+    final bigTextStyleInformation = BigTextStyleInformation(
+      body,
+      htmlFormatBigText: false,
+      contentTitle: title,
+      htmlFormatContentTitle: false,
+      summaryText: '내일 PT 일정',
+      htmlFormatSummaryText: false,
+    );
+    
+    // 알림 레이아웃 설정 
+    final androidDetails = AndroidNotificationDetails(
+      channels[0].id, 
+      channels[0].name,
+      channelDescription: channels[0].description,
+      importance: Importance.max,
+      priority: Priority.high,
+      styleInformation: bigTextStyleInformation,
+      icon: '@mipmap/ic_launcher',
+      groupKey: 'pt_schedule',
+      autoCancel: true,
+      vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      showWhen: true,
+    );
+    
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      threadIdentifier: 'pt_schedule',
+      interruptionLevel: InterruptionLevel.timeSensitive,
+      categoryIdentifier: 'ptScheduleCategory',
+    );
+    
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    
+    await flutterLocalNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      details,
+      payload: 'pt_schedule',
+    );
+  }
+
+  // 테스트용 알림 전송 메소드
+  static Future<void> showTestNotification({String type = notificationTypeDefault}) async {
+    final int id = Random().nextInt(1000);
+    String title = '테스트 알림';
+    String body = '이것은 테스트 알림입니다.';
+    
+    try {
+      if (kDebugMode) {
+        print('테스트 알림 시작 - 타입: $type');
+      }
+      
+      switch (type) {
+        case notificationTypePtSchedule:
+          await _showPtScheduleTestNotification();
+          break;
+        default:
+          await _showDefaultNotification(id, title, body);
+      }
+      
+      if (kDebugMode) {
+        print('테스트 알림 성공');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('테스트 알림 실패: $e');
+      }
+      // 실패 시 가장 기본적인 알림 시도
+      try {
+        await flutterLocalNotificationsPlugin.show(
+          id,
+          title,
+          body,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'basic_channel',
+              '기본 알림',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+        );
+      } catch (e2) {
+        if (kDebugMode) {
+          print('최후의 알림 표시 실패: $e2');
+        }
+      }
+    }
+  }
+  
+  // PT 일정 알림 테스트용 메소드
+  static Future<void> _showPtScheduleTestNotification() async {
+    try {
+      final int id = Random().nextInt(1000);
+      final String title = "📋 내일 PT 회원 명단";
+      final String body = """2023년 05월 15일 PT 일정 명단입니다.
+
+• 09:00~10:00 : 김민수
+• 10:30~11:30 : 이지은
+• 13:00~14:00 : 박준혁
+• 15:30~16:30 : 최유진
+• 17:00~18:00 : 정다은""";
+
+      // 스타일 정보 생성 - 확장 가능한 텍스트 형식
+      final BigTextStyleInformation bigTextStyleInformation = BigTextStyleInformation(
+        body,
+        htmlFormatBigText: false,
+        contentTitle: title,
+        htmlFormatContentTitle: false,
+        summaryText: '탭하여 전체 내용 보기',
+        htmlFormatSummaryText: false,
+      );
+
+      // 간단한 방식으로 먼저 시도
+      await flutterLocalNotificationsPlugin.show(
+        id,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channels[0].id,
+            channels[0].name,
+            channelDescription: channels[0].description,
+            importance: Importance.max,
+            priority: Priority.high,
+            styleInformation: bigTextStyleInformation,
+            ongoing: false,
+            autoCancel: true,
+            showWhen: true,
+            visibility: NotificationVisibility.public,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+            interruptionLevel: InterruptionLevel.timeSensitive,
+          ),
+        ),
+      );
+      
+      if (kDebugMode) {
+        print('PT 일정 테스트 알림 성공');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('PT 일정 테스트 알림 실패: $e');
+      }
+    }
+  }
+
+  // 기본 알림
+  static Future<void> _showDefaultNotification(int id, String title, String body) async {
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        channels[0].id,
+        channels[0].name,
+        channelDescription: channels[0].description,
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      );
+      
+      final iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+      
+      await flutterLocalNotificationsPlugin.show(id, title, body, details);
+      
+      if (kDebugMode) {
+        print('기본 알림 표시 성공: $title');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('기본 알림 표시 실패: $e');
+      }
+    }
+  }
+  
+  // 채팅 스타일 알림
+  static Future<void> _showChatNotification(int id, String title, String body) async {
+    // 메시지 스타일 알림 대신 BigTextStyle 사용
+    final bigTextStyleInformation = BigTextStyleInformation(
+      body,
+      htmlFormatBigText: true,
+      contentTitle: title,
+      htmlFormatContentTitle: true,
+      summaryText: '새로운 채팅',
+      htmlFormatSummaryText: true,
+    );
+    
+    final androidDetails = AndroidNotificationDetails(
+      channels[0].id,
+      channels[0].name,
+      channelDescription: channels[0].description,
+      importance: Importance.high,
+      priority: Priority.high,
+      styleInformation: bigTextStyleInformation,
+      category: AndroidNotificationCategory.message,
+      icon: '@mipmap/ic_launcher',
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+    );
+    
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      threadIdentifier: 'chat-thread',
+    );
+    
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    
+    await flutterLocalNotificationsPlugin.show(
+      id, 
+      title, 
+      body, 
+      details,
+      payload: 'chat_notification',
+    );
+  }
+  
+  // 이미지가 포함된 알림
+  static Future<void> _showImageNotification(int id, String title, String body) async {
+    // 이미지 스타일 정보 설정
+    final bigPictureStyleInformation = BigPictureStyleInformation(
+      const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      contentTitle: title,
+      summaryText: body,
+      hideExpandedLargeIcon: false,
+    );
+    
+    final androidDetails = AndroidNotificationDetails(
+      channels[0].id,
+      channels[0].name,
+      channelDescription: channels[0].description,
+      importance: Importance.high,
+      priority: Priority.high,
+      styleInformation: bigPictureStyleInformation,
+    );
+    
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    
+    await flutterLocalNotificationsPlugin.show(id, title, body, details);
+  }
+  
+  // 미디어 컨트롤이 있는 알림
+  static Future<void> _showMediaNotification(int id, String title, String body) async {
+    final List<AndroidNotificationAction> actions = [
+      AndroidNotificationAction(
+        _actionPause,
+        '일시정지',
+        icon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        showsUserInterface: true,
+      ),
+      AndroidNotificationAction(
+        _actionResume,
+        '재생',
+        icon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      ),
+      AndroidNotificationAction(
+        _actionStop,
+        '중지',
+        icon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      ),
+    ];
+    
+    final androidDetails = AndroidNotificationDetails(
+      channels[0].id,
+      channels[0].name,
+      channelDescription: channels[0].description,
+      importance: Importance.high,
+      priority: Priority.high,
+      actions: actions,
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      category: AndroidNotificationCategory.transport,
+      showWhen: false,
+    );
+    
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.active,
+    );
+    
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    
+    await flutterLocalNotificationsPlugin.show(id, title, body, details);
+  }
+  
+  // 진행 상태를 보여주는 알림
+  static Future<void> _showProgressNotification(int id, String title, String body) async {
+    // 진행률 표시 알림
+    final androidDetails = AndroidNotificationDetails(
+      channels[0].id,
+      channels[0].name,
+      channelDescription: channels[0].description,
+      importance: Importance.low,
+      priority: Priority.low,
+      onlyAlertOnce: true,
+      showProgress: true,
+      maxProgress: 100,
+      progress: 50, // 기본 50% 표시
+      channelShowBadge: false,
+    );
+    
+    final iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: false,
+    );
+    
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    
+    await flutterLocalNotificationsPlugin.show(
+      id, 
+      title, 
+      body, 
+      details,
+    );
   }
 }
