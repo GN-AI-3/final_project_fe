@@ -38,6 +38,9 @@ class CalendarConstants {
     CalendarView.month: CalendarView.schedule,
     CalendarView.schedule: CalendarView.day,
   };
+
+  // PT 기록 가능 시간 제한 (분 단위)
+  static const int ptLogTimeLimit = 60;
 }
 
 class CalendarState {
@@ -99,7 +102,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _loadMeetings();
     _loadPtContracts();
   }
 
@@ -110,18 +112,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _state.updateLoading(true);
 
     try {
-      final queryStartDate = startDate;
-      final queryEndDate = endDate;
-
       if (kDebugMode) {
-        print('Loading schedules from: ${queryStartDate?.toIso8601String() ?? 'now'} to ${queryEndDate?.toIso8601String() ?? 'now+30days'}');
+        print('Loading schedules from: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}');
       }
 
       List<Schedule> schedules = [];
       try {
         schedules = await _scheduleService.getSchedules(
-          startTime: queryStartDate,
-          endTime: queryEndDate,
+          startTime: startDate,
+          endTime: endDate,
         );
         
         if (kDebugMode) {
@@ -131,16 +130,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (kDebugMode) {
           print('Error loading schedules: $e');
         }
-        // 스케줄을 불러오는 중 오류가 발생해도 이미 불러온 데이터는 보여줌
         schedules = [];
       }
 
       if (!mounted) return;
 
-      final meetings =
-          schedules.map<Meeting>((Schedule schedule) {
-            return _createMeeting(schedule);
-          }).toList();
+      final meetings = schedules.map<Meeting>((Schedule schedule) {
+        return _createMeeting(schedule);
+      }).toList();
 
       if (!mounted) return;
 
@@ -295,22 +292,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
             },
             child: const Text('일지 조회'),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PtLogScreen(
-                    scheduleId: meeting.scheduleId!,
-                    meeting: meeting,
-                    title: 'PT 기록',
+          if (meeting.description?.contains('[완료된 일정]') ?? false && _isWithinTimeLimit(meeting.from)) ...[
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PtLogScreen(
+                      scheduleId: meeting.scheduleId!,
+                      meeting: meeting,
+                      title: meeting.eventName.length >= 8
+                          ? '${meeting.eventName.substring(8)} 회원님 PT 기록'
+                          : '${meeting.eventName} 회원님 PT 기록',
+                    ),
                   ),
-                ),
-              );
-            },
-            child: const Text('PT 기록하기'),
-          ),
+                ).then((_) {
+                  if (_state.lastStartDate != null && _state.lastEndDate != null) {
+                    _loadMeetings(
+                      startDate: _state.lastStartDate,
+                      endDate: _state.lastEndDate,
+                    );
+                  }
+                });
+              },
+              child: const Text('PT 기록하기'),
+            ),
+          ],
         ],
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -640,19 +647,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       59,
     );
 
-    final cachedStart = _state.lastStartDate;
-    final cachedEnd = _state.lastEndDate;
+    _state.updateLastDates(startDate, endDate);
+    _loadMeetings(startDate: startDate, endDate: endDate);
+  }
 
-    final needsLoading =
-        cachedStart == null ||
-        cachedEnd == null ||
-        startDate.isBefore(cachedStart) ||
-        endDate.isAfter(cachedEnd);
-
-    if (needsLoading) {
-      _state.updateLastDates(startDate, endDate);
-      _loadMeetings(startDate: startDate, endDate: endDate);
-    }
+  bool _isWithinTimeLimit(DateTime scheduleTime) {
+    final now = DateTime.now();
+    final difference = now.difference(scheduleTime).inMinutes.abs();
+    return difference <= CalendarConstants.ptLogTimeLimit;
   }
 
   @override
