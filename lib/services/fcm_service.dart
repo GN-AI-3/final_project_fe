@@ -3,10 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
-import 'dart:ffi';
 
 class FCMService {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -29,7 +26,7 @@ class FCMService {
 
   // 알림 채널 정의
   static final channels = <AndroidNotificationChannel>[
-    AndroidNotificationChannel(
+    const AndroidNotificationChannel(
       channelId,
       channelName,
       description: channelDescription,
@@ -38,7 +35,7 @@ class FCMService {
       enableLights: true,
       ledColor: Colors.blue,
     ),
-    AndroidNotificationChannel(
+    const AndroidNotificationChannel(
       groupChannelId,
       groupChannelName,
       description: groupChannelDescription,
@@ -426,7 +423,7 @@ class FCMService {
       largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
     );
     
-    final iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
@@ -502,8 +499,8 @@ class FCMService {
   static Future<void> _showPtScheduleTestNotification() async {
     try {
       final int id = Random().nextInt(1000);
-      final String title = "📋 내일 PT 회원 명단";
-      final String body = """2023년 05월 15일 PT 일정 명단입니다.
+      const String title = "📋 내일 PT 회원 명단";
+      const String body = """2023년 05월 15일 PT 일정 명단입니다.
 
 • 09:00~10:00 : 김민수
 • 10:30~11:30 : 이지은
@@ -512,7 +509,7 @@ class FCMService {
 • 17:00~18:00 : 정다은""";
 
       // 스타일 정보 생성 - 확장 가능한 텍스트 형식
-      final BigTextStyleInformation bigTextStyleInformation = BigTextStyleInformation(
+      const BigTextStyleInformation bigTextStyleInformation = BigTextStyleInformation(
         body,
         htmlFormatBigText: false,
         contentTitle: title,
@@ -587,7 +584,7 @@ class FCMService {
         autoCancel: true,
       );
       
-      final iosDetails = DarwinNotificationDetails(
+      const iosDetails = DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
@@ -633,7 +630,7 @@ class FCMService {
       autoCancel: true,
     );
     
-    final iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
@@ -671,7 +668,7 @@ class FCMService {
       styleInformation: bigPictureStyleInformation,
     );
     
-    final iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
@@ -685,21 +682,21 @@ class FCMService {
   // 미디어 컨트롤이 있는 알림
   static Future<void> _showMediaNotification(int id, String title, String body) async {
     final List<AndroidNotificationAction> actions = [
-      AndroidNotificationAction(
+      const AndroidNotificationAction(
         _actionPause,
         '일시정지',
-        icon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        icon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
         showsUserInterface: true,
       ),
-      AndroidNotificationAction(
+      const AndroidNotificationAction(
         _actionResume,
         '재생',
-        icon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        icon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       ),
-      AndroidNotificationAction(
+      const AndroidNotificationAction(
         _actionStop,
         '중지',
-        icon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        icon: DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
       ),
     ];
     
@@ -715,7 +712,7 @@ class FCMService {
       showWhen: false,
     );
     
-    final iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
@@ -743,7 +740,7 @@ class FCMService {
       channelShowBadge: false,
     );
     
-    final iosDetails = DarwinNotificationDetails(
+    const iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: false,
       presentSound: false,

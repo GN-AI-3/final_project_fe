@@ -60,13 +60,27 @@ class _MyAppState extends State<MyApp> {
       locale: const Locale('ko', 'KR'),
       title: 'GYMGGUN',
       theme: ThemeData(
-        primaryColor: const Color(0xfff0f0f0),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xff2746f8),
+        ),
         scaffoldBackgroundColor: const Color(0xfff0f0f0),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xfff0f0f0),
           elevation: 0,
           iconTheme: IconThemeData(color: Colors.black),
           titleTextStyle: TextStyle(color: Colors.black, fontSize: 20),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xfff0f0f0),
+            foregroundColor: Colors.black,
+          ),
+        ),
+        dropdownMenuTheme: DropdownMenuThemeData(
+          textStyle: const TextStyle(color: Colors.black),
+          menuStyle: MenuStyle(
+            backgroundColor: WidgetStateProperty.all(const Color(0xfff0f0f0)),
+          ),
         ),
       ),
       home: _isLoading

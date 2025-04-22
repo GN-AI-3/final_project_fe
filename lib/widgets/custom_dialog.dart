@@ -54,9 +54,9 @@ class CustomDialog extends StatelessWidget {
                   horizontal: 16,
                   vertical: 12,
                 ),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor,
-                  borderRadius: const BorderRadius.only(
+                decoration: const BoxDecoration(
+                  color: Color(0xfff0f0f0),
+                  borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
                   ),
@@ -86,11 +86,10 @@ class CustomDialog extends StatelessWidget {
               ),
             ),
             if (actions != null && actions!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  bottom: 12,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,

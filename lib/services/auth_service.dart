@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../utils/jwt_decoder.dart';
 import '../config/env.dart';
@@ -113,7 +112,7 @@ class AuthService {
           ? '/api/member/logout' 
           : '/api/trainer/logout';
           
-      final response = await http.post(
+      await http.post(
         Uri.parse('$baseUrl$logoutEndpoint'),
         headers: {
           'Content-Type': 'application/json',

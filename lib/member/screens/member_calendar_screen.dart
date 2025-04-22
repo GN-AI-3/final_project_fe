@@ -599,6 +599,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                   ),
                   headerDateFormat: ' yyyy년 M월',
                   timeZone: 'Korea Standard Time',
+                  cellBorderColor: const Color(0xffd8d8d8),
                   monthViewSettings: const MonthViewSettings(
                     showAgenda: true,
                     agendaViewHeight: 350,

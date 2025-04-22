@@ -22,6 +22,7 @@ class PtContractScreenState extends State<PtContractScreen> {
   List<PtContract> _filteredContracts = [];
   bool _isLoading = false;
   final TextEditingController _searchController = TextEditingController();
+  String? _selectedStatus;
 
   // 색상 상수 정의
   static const Color primaryColor = Color(0xff2746F8);
@@ -49,7 +50,42 @@ class PtContractScreenState extends State<PtContractScreen> {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredContracts = _contracts.where((contract) {
-        return contract.memberName.toLowerCase().contains(query);
+        final matchesSearch = contract.memberName.toLowerCase().contains(query);
+        final matchesStatus = _selectedStatus == null || contract.status == _selectedStatus;
+        return matchesSearch && matchesStatus;
+      }).toList();
+    });
+  }
+
+  void _showFilterMenu() {
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(1, 80, 0, 0),
+      items: [
+        const PopupMenuItem<String>(value: 'RESET', child: Text('전체')),
+        const PopupMenuItem<String>(value: 'ACTIVE', child: Text('진행중')),
+        const PopupMenuItem<String>(value: 'COMPLETED', child: Text('완료')),
+        const PopupMenuItem<String>(value: 'CANCELLED', child: Text('취소')),
+        const PopupMenuItem<String>(value: 'SUSPENDED', child: Text('일시중지')),
+        const PopupMenuItem<String>(value: 'EXPIRED', child: Text('만료')),
+      ],
+    ).then((value) {
+      if (value == null) return;
+      
+      setState(() {
+        _selectedStatus = value == 'RESET' ? null : value;
+        _filterContracts();
+      });
+    });
+  }
+
+  void _filterContracts() {
+    setState(() {
+      _filteredContracts = _contracts.where((contract) {
+        final matchesSearch = _searchController.text.isEmpty || 
+            contract.memberName.toLowerCase().contains(_searchController.text.toLowerCase());
+        final matchesStatus = _selectedStatus == null || contract.status == _selectedStatus;
+        return matchesSearch && matchesStatus;
       }).toList();
     });
   }
@@ -67,7 +103,7 @@ class PtContractScreenState extends State<PtContractScreen> {
 
       setState(() {
         _contracts = contracts;
-        _filteredContracts = contracts;
+        _filterContracts();
         _isLoading = false;
       });
     } catch (e) {
@@ -80,25 +116,6 @@ class PtContractScreenState extends State<PtContractScreen> {
       if (!mounted) return;
       _showErrorDialog('계약 목록을 불러오는데 실패했습니다: $e');
     }
-  }
-
-  void _showFilterMenu() {
-    showMenu<String>(
-      context: context,
-      position: const RelativeRect.fromLTRB(1, 80, 0, 0),
-      items: [
-        const PopupMenuItem<String>(value: null, child: Text('상태: 전체')),
-        const PopupMenuItem<String>(value: 'ACTIVE', child: Text('진행중')),
-        const PopupMenuItem<String>(value: 'COMPLETED', child: Text('완료')),
-        const PopupMenuItem<String>(value: 'CANCELLED', child: Text('취소')),
-        const PopupMenuItem<String>(value: 'SUSPENDED', child: Text('일시중지')),
-        const PopupMenuItem<String>(value: 'EXPIRED', child: Text('만료')),
-      ],
-    ).then((value) {
-      setState(() {
-        _loadContracts();
-      });
-    });
   }
 
   void _showErrorDialog(String error) {
