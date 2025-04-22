@@ -635,53 +635,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showMeetingOptions(Meeting meeting) {
-    showModalBottomSheet(
-      context: context,
-      builder:
-          (context) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (meeting.description?.contains('[완료된 일정]') ?? false)
-                  ListTile(
-                    leading: const Icon(Icons.person_off, color: Colors.red),
-                    title: const Text(
-                      '불참 처리',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showNoShowDialog(meeting);
-                    },
-                  )
-                else ...[
-                  ListTile(
-                    leading: const Icon(Icons.edit),
-                    title: const Text('일정 변경'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showChangeScheduleDialog(meeting);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.cancel, color: Colors.red),
-                    title: const Text(
-                      '일정 취소',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showCancelDialog(meeting);
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-    );
-  }
-
   Future<void> _showChangeScheduleDialog(Meeting meeting) async {
     await CustomDialog.show(
       context: context,
