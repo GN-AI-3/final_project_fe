@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/env.dart';
 import '../../models/schedule.dart';
@@ -14,7 +15,7 @@ abstract class ScheduleService {
   static const String _schedulesEndpoint = '/api/pt_schedules';
 
   /// 서비스에서 사용할 토큰을 반환하는 getter
-  String get token;
+  Future<String> getToken();
 
   /// 일정 목록을 조회하는 메서드
   Future<List<Schedule>> getSchedules({
@@ -28,6 +29,7 @@ abstract class ScheduleService {
         '$baseUrl$_schedulesEndpoint',
       ).replace(queryParameters: queryParams);
 
+      final token = await getToken();
       final response = await http.get(
         uri,
         headers: {
@@ -82,6 +84,7 @@ abstract class ScheduleService {
         print('Request body: ${jsonEncode(requestBody)}');
       }
 
+      final token = await getToken();
       final response = await http.post(
         Uri.parse('$baseUrl$_schedulesEndpoint'),
         headers: {
@@ -129,6 +132,7 @@ abstract class ScheduleService {
         print('Request body: ${jsonEncode({'reason': reason})}');
       }
 
+      final token = await getToken();
       final response = await http.patch(
         Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/cancel'),
         headers: {
@@ -178,6 +182,7 @@ abstract class ScheduleService {
     required String reason,
   }) async {
     try {
+      final token = await getToken();
       final response = await http.patch(
         Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/change'),
         headers: {
@@ -219,12 +224,17 @@ abstract class ScheduleService {
     }
   }
 
-  /// 불참 처리를 하는 메서드
-  Future<Schedule> noShowSchedule({
+  /// 일정을 불참으로 표시하는 메서드
+  Future<Schedule> markNoShow({
     required int scheduleId,
-    String reason = '부재중',
+    required String reason,
   }) async {
     try {
+      if (kDebugMode) {
+        print('Request body: ${jsonEncode({'reason': reason})}');
+      }
+
+      final token = await getToken();
       final response = await http.patch(
         Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/no_show'),
         headers: {
@@ -241,12 +251,16 @@ abstract class ScheduleService {
       }
 
       if (response.statusCode == 200) {
-        return Schedule.fromJson(jsonDecode(response.body));
+        final json = jsonDecode(response.body);
+        if (json['currentPtCount'] == null) {
+          json['currentPtCount'] = 0;
+        }
+        return Schedule.fromJson(json);
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
       } else {
         final error = jsonDecode(response.body);
-        throw Exception(error['error'] ?? '불참 처리에 실패했습니다.');
+        throw Exception(error['error'] ?? '일정 불참 처리에 실패했습니다.');
       }
     } on SocketException catch (e) {
       if (kDebugMode) {
@@ -255,7 +269,49 @@ abstract class ScheduleService {
       throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
     } catch (e, stackTrace) {
       if (kDebugMode) {
-        print('Error in noShowSchedule: $e');
+        print('Error in markNoShow: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  /// 일정을 완료로 표시하는 메서드
+  Future<bool> markCompleted({
+    required int scheduleId,
+  }) async {
+    try {
+      final token = await getToken();
+      final response = await http.patch(
+        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/completed'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '일정 완료 처리에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in markCompleted: $e');
         print('Stack trace: $stackTrace');
       }
       throw Exception('Error: $e');
@@ -267,18 +323,17 @@ abstract class ScheduleService {
     DateTime? endTime,
     String? status,
   ) {
-    final params = <String, String>{};
+    final queryParams = <String, String>{};
     if (startTime != null) {
-      params['startTime'] =
-          (startTime.millisecondsSinceEpoch ~/ 1000).toString();
+      queryParams['startTime'] = (startTime.millisecondsSinceEpoch ~/ 1000).toString();
     }
     if (endTime != null) {
-      params['endTime'] = (endTime.millisecondsSinceEpoch ~/ 1000).toString();
+      queryParams['endTime'] = (endTime.millisecondsSinceEpoch ~/ 1000).toString();
     }
     if (status != null) {
-      params['status'] = status;
+      queryParams['status'] = status;
     }
-    return params;
+    return queryParams;
   }
 
   Map<String, dynamic> _buildScheduleRequestBody({
@@ -297,22 +352,25 @@ abstract class ScheduleService {
 /// 트레이너용 일정 서비스
 class TrainerScheduleService extends ScheduleService {
   @override
-  String get token => dotenv.env['TRAINER_TOKEN']!;
+  Future<String> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('TRAINER_TOKEN');
+    if (token == null || token.isEmpty) {
+      throw Exception('트레이너 토큰이 없습니다. 다시 로그인해주세요.');
+    }
+    return token;
+  }
 }
 
 /// 회원용 일정 서비스
 class MemberScheduleService extends ScheduleService {
-  // 테스트 환경에서는 환경 변수에서 토큰을 가져옴
   @override
-  String get token => dotenv.env['TRAINEE_TOKEN']!;
-
-  // 실제 배포 환경에서는 아래와 같이 사용
-  /*
-  final String _memberToken;
-
-  MemberScheduleService(this._memberToken);
-
-  @override
-  String get token => _memberToken;
-  */
+  Future<String> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('TRAINEE_TOKEN');
+    if (token == null || token.isEmpty) {
+      throw Exception('회원 토큰이 없습니다. 다시 로그인해주세요.');
+    }
+    return token;
+  }
 }

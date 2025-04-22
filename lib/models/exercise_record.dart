@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 class ExerciseRecord {
   final int exerciseId;
   final String exerciseName;
@@ -12,12 +14,26 @@ class ExerciseRecord {
   });
 
   factory ExerciseRecord.fromJson(Map<String, dynamic> json) {
-    return ExerciseRecord(
-      exerciseId: json['exerciseId'],
-      exerciseName: json['exerciseName'],
-      recordData: json['recordData'] ?? {},
-      memoData: json['memoData'] ?? {},
-    );
+    try {
+      return ExerciseRecord(
+        exerciseId: json['exerciseId'] as int,
+        exerciseName: json['exerciseName'] as String,
+        recordData: (json['recordData'] as Map<String, dynamic>?) ?? {},
+        memoData: (json['memoData'] as Map<String, dynamic>?) ?? {},
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error parsing ExerciseRecord: $e');
+        print('JSON: $json');
+      }
+      // 오류 발생 시 기본값으로 안전하게 생성
+      return ExerciseRecord(
+        exerciseId: json['exerciseId'] as int? ?? 0,
+        exerciseName: json['exerciseName'] as String? ?? '알 수 없는 운동',
+        recordData: {},
+        memoData: {},
+      );
+    }
   }
 
   Map<String, String> get translatedRecordData {
@@ -53,11 +69,24 @@ class GroupedExerciseRecord {
   });
 
   factory GroupedExerciseRecord.fromJson(Map<String, dynamic> json) {
-    return GroupedExerciseRecord(
-      date: json['date'],
-      records: (json['records'] as List)
-          .map((record) => ExerciseRecord.fromJson(record))
-          .toList(),
-    );
+    try {
+      return GroupedExerciseRecord(
+        date: json['date'] as String,
+        records: (json['records'] as List<dynamic>?)
+                ?.map((e) => ExerciseRecord.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error parsing GroupedExerciseRecord: $e');
+        print('JSON: $json');
+      }
+      // 오류 발생 시 빈 레코드로 안전하게 생성
+      return GroupedExerciseRecord(
+        date: json['date'] as String? ?? DateTime.now().toIso8601String().split('T')[0],
+        records: [],
+      );
+    }
   }
 } 

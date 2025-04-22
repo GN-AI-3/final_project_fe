@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import '../member/screens/member_calendar_screen.dart';
+import '../member/screens/member_chat_screen.dart';
 import '../member/screens/member_profile_screen.dart';
-import '../services/fcm_service.dart';
 import '../trainer/screens/calendar_screen.dart';
 import '../trainer/screens/pt_contract_screen.dart';
+import '../trainer/screens/trainer_chat_screen.dart';
+import '../services/auth_service.dart';
 import '../widgets/custom_dialog.dart';
-import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,67 +17,35 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _isSendingNotification = false;
-  String? _notificationError;
-
-  Future<void> _sendNotification() async {
-    if (_isSendingNotification) return;
-
+  bool _isLoading = true;
+  String _userName = "";
+  bool _isTrainer = false;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+  
+  Future<void> _loadUserInfo() async {
     setState(() {
-      _isSendingNotification = true;
-      _notificationError = null;
+      _isLoading = true;
     });
-
+    
     try {
-      final fcmToken = await FCMService.getFCMToken();
-      if (fcmToken == null) return;
-
-      final url = Uri.parse('http://localhost:8080/api/notification/send');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: '''
-        {
-          "token": "$fcmToken",
-          "title": "테스트 알림",
-          "body": "이것은 테스트 알림입니다."
-        }
-        ''',
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to send notification');
-      }
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder:
-              (context) => CustomDialog(
-                title: '알림',
-                content: const Text('알림이 성공적으로 전송되었습니다'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('확인'),
-                  ),
-                ],
-              ),
-        );
-      }
+      final userType = await AuthService.getUserType();
+      final isTrainer = await AuthService.isTrainer();
+      
+      setState(() {
+        _isTrainer = isTrainer;
+        _userName = userType == 'trainer' ? '트레이너' : '회원';
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
-        _notificationError = e.toString();
+        _isLoading = false;
       });
-      if (mounted) {
-        _showErrorDialog(e.toString());
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSendingNotification = false;
-        });
-      }
+      _showErrorDialog('사용자 정보를 로드하는 중 오류가 발생했습니다.');
     }
   }
 
@@ -102,14 +70,40 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _logout() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorDialog('로그아웃 중 오류가 발생했습니다.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    
     return Scaffold(
       backgroundColor: const Color(0xfff0f0f0),
       appBar: AppBar(
-        title: const Text(
-          '홈',
-          style: TextStyle(
+        title: Text(
+          _isTrainer ? '트레이너 홈' : '회원 홈',
+          style: const TextStyle(
             color: Color(0xff3B3C40),
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -133,6 +127,11 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             tooltip: '프로필',
           ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: '로그아웃',
+          ),
         ],
       ),
       body: Center(
@@ -142,42 +141,56 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildFeatureCard(
-                  icon: Icons.chat,
-                  title: '채팅하기(회원용)',
-                  description: '24시간 응답 가능한 챗봇',
-                  onTap: () => _navigateToScreen(const ChatScreen()),
+                // Welcome message
+                Text(
+                  '$_userName님 환영합니다',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff3B3C40),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                _buildFeatureCard(
-                  icon: Icons.calendar_today,
-                  title: '캘린더(트레이너용)',
-                  description: 'PT 일정 관리 및 조회',
-                  onTap: () => _navigateToScreen(const CalendarScreen()),
-                ),
-                const SizedBox(height: 16),
-                _buildFeatureCard(
-                  icon: Icons.calendar_today,
-                  title: '캘린더(회원용)',
-                  description: 'PT 일정 관리 및 조회',
-                  onTap: () => _navigateToScreen(const MemberCalendarScreen()),
-                ),
-                const SizedBox(height: 16),
-                _buildFeatureCard(
-                  icon: Icons.description,
-                  title: '계약 관리(트레이너용)',
-                  description: '회원 계약 정보 관리',
-                  onTap: () => _navigateToScreen(const PtContractScreen()),
-                ),
-                const SizedBox(height: 16),
-                _buildFeatureCard(
-                  icon: Icons.notifications,
-                  title: '알림 보내기',
-                  description: '회원에게 알림 전송',
-                  onTap: _sendNotification,
-                  isLoading: _isSendingNotification,
-                  error: _notificationError,
-                ),
+                const SizedBox(height: 32),
+                
+                // Display appropriate features based on user type
+                if (_isTrainer) ...[
+                  // Trainer features
+                  _buildFeatureCard(
+                    icon: Icons.chat,
+                    title: '채팅하기',
+                    description: '회원과 채팅으로 소통하세요',
+                    onTap: () => _navigateToScreen(const TrainerChatScreen()),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureCard(
+                    icon: Icons.calendar_today,
+                    title: '캘린더',
+                    description: 'PT 일정 관리 및 조회',
+                    onTap: () => _navigateToScreen(const CalendarScreen()),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureCard(
+                    icon: Icons.description,
+                    title: '계약 관리',
+                    description: '회원 계약 정보 관리',
+                    onTap: () => _navigateToScreen(const PtContractScreen()),
+                  ),
+                ] else ...[
+                  // Member features
+                  _buildFeatureCard(
+                    icon: Icons.chat,
+                    title: '채팅하기',
+                    description: '24시간 응답 가능한 챗봇',
+                    onTap: () => _navigateToScreen(const MemberChatScreen()),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureCard(
+                    icon: Icons.calendar_today,
+                    title: '캘린더',
+                    description: 'PT 일정 관리 및 조회',
+                    onTap: () => _navigateToScreen(const MemberCalendarScreen()),
+                  ),
+                ],
               ],
             ),
           ),

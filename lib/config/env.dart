@@ -1,18 +1,29 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 
+/// Server environment configuration
 class Env {
+  /// Get the base server URL from environment variables
   static String getServerURL() {
-    if (Platform.isAndroid) {
-      // Android 에뮬레이터인 경우
-      if (Platform.environment.containsKey('ANDROID_EMU')) {
-        return dotenv.env['FETCH_SERVER_URL']!;
+    // FETCH_SERVER_URL2 설정을 직접 사용
+    String? serverUrl = dotenv.env['FETCH_SERVER_URL2'];
+    
+    if (serverUrl == null || serverUrl.isEmpty) {
+      // Log warning if no URL is configured
+      if (kDebugMode) {
+        print('서버 URL이 설정되지 않았습니다. .env 파일의 FETCH_SERVER_URL2를 확인하세요.');
       }
-      // 실제 Android 기기인 경우
-      return dotenv.env['FETCH_SERVER_URL2']!;
+      
+      throw Exception('서버 URL이 설정되지 않았습니다. .env 파일의 FETCH_SERVER_URL2를 확인하세요.');
     }
-    // iOS나 다른 플랫폼의 경우
-    return dotenv.env['FETCH_SERVER_URL2']!;
+    
+    return serverUrl;
+  }
+  
+  /// Get API key for external services
+  static String? getApiKey(String key) {
+    return dotenv.env[key];
   }
 }

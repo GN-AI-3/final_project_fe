@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/env.dart';
 import '../../models/member.dart';
@@ -11,18 +12,29 @@ import '../../models/member.dart';
 
 class MemberService {
   static String get baseUrl => Env.getServerURL();
-  static final String? _authToken = dotenv.env['TRAINEE_TOKEN'];
   static const String _membersEndpoint = '/api/members';
   static const String _meEndpoint = '/api/member/me';
   static const String _logoutEndpoint = '/api/member/logout';
 
+  // 토큰을 동적으로 가져오는 메소드
+  Future<String?> _getAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('TRAINEE_TOKEN');
+  }
+
   Future<List<Member>> getMembers() async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       final response = await http.get(
         Uri.parse('$baseUrl$_membersEndpoint'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );
@@ -57,11 +69,17 @@ class MemberService {
 
   Future<Member> getMember(int memberId) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       final response = await http.get(
         Uri.parse('$baseUrl$_membersEndpoint/$memberId'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );
@@ -100,6 +118,12 @@ class MemberService {
     required String gender,
   }) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       final requestBody = {
         'name': name,
         'email': email,
@@ -115,7 +139,7 @@ class MemberService {
         Uri.parse('$baseUrl$_membersEndpoint'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode(requestBody),
@@ -156,6 +180,12 @@ class MemberService {
     required String gender,
   }) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       final requestBody = {
         'name': name,
         'email': email,
@@ -171,7 +201,7 @@ class MemberService {
         Uri.parse('$baseUrl$_membersEndpoint/$memberId'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode(requestBody),
@@ -206,11 +236,17 @@ class MemberService {
 
   Future<void> deleteMember(int memberId) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       final response = await http.delete(
         Uri.parse('$baseUrl$_membersEndpoint/$memberId'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );
@@ -244,11 +280,21 @@ class MemberService {
 
   Future<Member> getMyInfo() async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
+      if (kDebugMode) {
+        print('회원 정보 요청 - 토큰: ${token.substring(0, 10)}...');
+      }
+
       final response = await http.get(
         Uri.parse('$baseUrl$_meEndpoint'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );
@@ -282,6 +328,12 @@ class MemberService {
 
   Future<Member> updateMyInfo(Member member) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       if (kDebugMode) {
         print('Request body: ${jsonEncode(member.toJson())}');
       }
@@ -290,7 +342,7 @@ class MemberService {
         Uri.parse('$baseUrl$_meEndpoint'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode(member.toJson()),
@@ -325,11 +377,17 @@ class MemberService {
 
   Future<void> logout() async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        return; // 이미 로그아웃된 상태
+      }
+      
       final response = await http.post(
         Uri.parse('$baseUrl$_logoutEndpoint'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );

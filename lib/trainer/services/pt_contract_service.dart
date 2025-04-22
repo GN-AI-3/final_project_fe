@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/env.dart';
@@ -11,16 +11,27 @@ import '../../models/pt_contract.dart';
 
 class PtContractService {
   static String get baseUrl => Env.getServerURL();
-  static final String? _authToken = dotenv.env['TRAINER_TOKEN'];
+  static const String _tokenKey = 'TRAINER_TOKEN';
   static const String _endpoint = '/api/pt_contracts';
+
+  // 토큰 가져오기
+  Future<String> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    if (token == null || token.isEmpty) {
+      throw Exception('트레이너 토큰이 없습니다. 다시 로그인해주세요.');
+    }
+    return token;
+  }
 
   Future<List<PtContract>> getContractMembers() async {
     try {
+      final token = await getToken();
       final response = await http.get(
         Uri.parse('$baseUrl$_endpoint/members'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );
@@ -59,11 +70,12 @@ class PtContractService {
         print('Request status: $status');
       }
 
+      final token = await getToken();
       final response = await http.patch(
         Uri.parse('$baseUrl$_endpoint/$ptContractId/status?status=$status'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );
@@ -102,11 +114,12 @@ class PtContractService {
     required int totalCount,
   }) async {
     try {
+      final token = await getToken();
       final response = await http.patch(
         Uri.parse('$baseUrl$_endpoint/$ptContractId'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode({

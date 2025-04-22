@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/env.dart';
 import '../../models/chat_message.dart';
@@ -13,13 +14,24 @@ import '../../screens/chat_screen.dart';
 
 class ChatService {
   static String get baseUrl => Env.getServerURL();
-  static final String? _authToken = dotenv.env['TRAINEE_TOKEN'];
+
+  // 토큰을 동적으로 가져오는 메소드
+  Future<String?> _getAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('TRAINEE_TOKEN');
+  }
 
   Future<ChatMessage> sendMessage(
     String message,
     List<ChatMessage> history,
   ) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       if (kDebugMode) {
         print('Request body: ${jsonEncode({'content': message})}');
       }
@@ -28,7 +40,7 @@ class ChatService {
         Uri.parse('$baseUrl/api/chat/send'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode({'content': message}),
@@ -70,6 +82,12 @@ class ChatService {
 
   Future<List<ChatMessage>> getRecentMessages() async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       if (kDebugMode) {
         print('Fetching recent messages from: $baseUrl/api');
       }
@@ -78,7 +96,7 @@ class ChatService {
         Uri.parse('$baseUrl/recent'),
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
         },
       );
 

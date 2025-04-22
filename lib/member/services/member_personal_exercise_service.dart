@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/env.dart';
@@ -12,11 +12,33 @@ import '../../utils/jwt_decoder.dart';
 
 class MemberPersonalExerciseService {
   static String get baseUrl => Env.getServerURL();
-  static final String? _authToken = dotenv.env['TRAINEE_TOKEN'];
+  static const String _tokenKey = 'TRAINEE_TOKEN';
 
-  int? get memberId {
-    if (_authToken == null) return null;
-    return JwtDecoder.getMemberId(_authToken!);
+  // 토큰 가져오기
+  Future<String> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    if (token == null || token.isEmpty) {
+      throw Exception('회원 토큰이 없습니다. 다시 로그인해주세요.');
+    }
+    return token;
+  }
+
+  // 회원 ID 가져오기
+  Future<int> getMemberId() async {
+    try {
+      final token = await getToken();
+      final memberId = JwtDecoder.getMemberId(token);
+      if (memberId == null) {
+        throw Exception('멤버 ID를 찾을 수 없습니다. 토큰을 확인해주세요.');
+      }
+      return memberId;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting memberId: $e');
+      }
+      throw Exception('멤버 ID를 가져오는 데 실패했습니다: $e');
+    }
   }
 
   Future<ChatMessage> sendMessage(
@@ -24,10 +46,8 @@ class MemberPersonalExerciseService {
     DateTime date,
   ) async {
     try {
-      final memberId = this.memberId;
-      if (memberId == null) {
-        throw Exception('멤버 ID를 찾을 수 없습니다. 토큰을 확인해주세요.');
-      }
+      final memberId = await getMemberId();
+      final token = await getToken();
 
       if (kDebugMode) {
         print('Request body: ${jsonEncode({
@@ -41,7 +61,7 @@ class MemberPersonalExerciseService {
         Uri.parse('$baseUrl/api/chat/workout_log'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode({
@@ -90,10 +110,8 @@ class MemberPersonalExerciseService {
 
   Future<List<ChatMessage>> getRecentMessages(DateTime date) async {
     try {
-      final memberId = this.memberId;
-      if (memberId == null) {
-        throw Exception('멤버 ID를 찾을 수 없습니다. 토큰을 확인해주세요.');
-      }
+      final memberId = await getMemberId();
+      final token = await getToken();
 
       if (kDebugMode) {
         print('Fetching recent messages from: $baseUrl/api/chat/workout_log');
@@ -103,7 +121,7 @@ class MemberPersonalExerciseService {
         Uri.parse('$baseUrl/api/chat/workout_log?memberId=$memberId&date=${date.toIso8601String()}'),
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -140,20 +158,23 @@ class MemberPersonalExerciseService {
 
   Future<List<GroupedExerciseRecord>> getExerciseRecords(DateTime startTime, DateTime endTime) async {
     try {
-      final memberId = this.memberId;
-      if (memberId == null) {
-        throw Exception('멤버 ID를 찾을 수 없습니다. 토큰을 확인해주세요.');
-      }
+      final memberId = await getMemberId();
+      final token = await getToken();
 
       if (kDebugMode) {
         print('Fetching exercise records from: $baseUrl/api/exercise_records/grouped');
+        print('Date range: ${startTime.toString()} to ${endTime.toString()}');
       }
 
+      // 날짜 형식을 yyyy-MM-dd로 변환
+      final startDate = '${startTime.year}-${startTime.month.toString().padLeft(2, '0')}-${startTime.day.toString().padLeft(2, '0')}';
+      final endDate = '${endTime.year}-${endTime.month.toString().padLeft(2, '0')}-${endTime.day.toString().padLeft(2, '0')}';
+
       final response = await http.get(
-        Uri.parse('$baseUrl/api/exercise_records/grouped?memberId=$memberId&startTime=${startTime.year}-${startTime.month.toString().padLeft(2, '0')}-${startTime.day.toString().padLeft(2, '0')}&endTime=${endTime.year}-${endTime.month.toString().padLeft(2, '0')}-${endTime.day.toString().padLeft(2, '0')}'),
+        Uri.parse('$baseUrl/api/exercise_records/grouped?memberId=$memberId&startTime=$startDate&endTime=$endDate'),
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -193,6 +214,8 @@ class MemberPersonalExerciseService {
     required Map<String, dynamic> memoData,
   }) async {
     try {
+      final token = await getToken();
+      
       if (kDebugMode) {
         print('Updating exercise record...');
       }
@@ -201,7 +224,7 @@ class MemberPersonalExerciseService {
         Uri.parse('$baseUrl/api/exercise_records'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode({
