@@ -149,11 +149,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (!mounted) return;
 
       _state.meetings = meetings;
-      _state.updateFilteredMeetings(meetings);
-
-      if (_state.selectedStatus != null) {
-        _filterMeetings();
-      }
+      
+      // 초기 필터링: scheduled와 completed 상태의 일정만 표시
+      _state.updateFilteredMeetings(
+        meetings.where((meeting) {
+          final status = meeting.description?.split('\n')[0];
+          return status == null || 
+                 status == CalendarConstants.statusDescriptions['scheduled'] ||
+                 status == CalendarConstants.statusDescriptions['completed'];
+        }).toList(),
+      );
 
       if (mounted) {
         setState(() {});
