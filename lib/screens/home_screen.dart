@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import '../member/screens/member_calendar_screen.dart';
 import '../member/screens/member_chat_screen.dart';
@@ -7,6 +6,7 @@ import '../member/screens/member_profile_screen.dart';
 import '../trainer/screens/calendar_screen.dart';
 import '../trainer/screens/pt_contract_screen.dart';
 import '../trainer/screens/trainer_chat_screen.dart';
+import '../services/auth_service.dart';
 import '../widgets/custom_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,19 +16,37 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isLoading = true;
+  String _userName = "";
+  bool _isTrainer = false;
   
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _loadUserInfo();
   }
   
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _loadUserInfo() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final userType = await AuthService.getUserType();
+      final isTrainer = await AuthService.isTrainer();
+      
+      setState(() {
+        _isTrainer = isTrainer;
+        _userName = userType == 'trainer' ? '트레이너' : '회원';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorDialog('사용자 정보를 로드하는 중 오류가 발생했습니다.');
+    }
   }
 
   void _navigateToScreen(Widget screen) {
@@ -52,14 +70,40 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  Future<void> _logout() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showErrorDialog('로그아웃 중 오류가 발생했습니다.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    
     return Scaffold(
       backgroundColor: const Color(0xfff0f0f0),
       appBar: AppBar(
-        title: const Text(
-          '홈',
-          style: TextStyle(
+        title: Text(
+          _isTrainer ? '트레이너 홈' : '회원 홈',
+          style: const TextStyle(
             color: Color(0xff3B3C40),
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -83,89 +127,72 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             },
             tooltip: '프로필',
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: const Color(0xff2746f8),
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: const Color(0xff2746f8),
-          tabs: const [
-            Tab(text: '회원'),
-            Tab(text: '트레이너'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // 회원 탭 화면
-          _buildMemberTab(),
-          // 트레이너 탭 화면
-          _buildTrainerTab(),
-        ],
-      ),
-    );
-  }
-  
-  // 회원 탭 내용
-  Widget _buildMemberTab() {
-    return Center(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildFeatureCard(
-                icon: Icons.chat,
-                title: '채팅하기',
-                description: '24시간 응답 가능한 챗봇',
-                onTap: () => _navigateToScreen(const MemberChatScreen()),
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureCard(
-                icon: Icons.calendar_today,
-                title: '캘린더',
-                description: 'PT 일정 관리 및 조회',
-                onTap: () => _navigateToScreen(const MemberCalendarScreen()),
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: '로그아웃',
           ),
-        ),
+        ],
       ),
-    );
-  }
-  
-  // 트레이너 탭 내용
-  Widget _buildTrainerTab() {
-    return Center(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildFeatureCard(
-                icon: Icons.chat,
-                title: '채팅하기',
-                description: '24시간 응답 가능한 챗봇',
-                onTap: () => _navigateToScreen(const TrainerChatScreen()),
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureCard(
-                icon: Icons.calendar_today,
-                title: '캘린더',
-                description: 'PT 일정 관리 및 조회',
-                onTap: () => _navigateToScreen(const CalendarScreen()),
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureCard(
-                icon: Icons.description,
-                title: '계약 관리',
-                description: '회원 계약 정보 관리',
-                onTap: () => _navigateToScreen(const PtContractScreen()),
-              ),
-            ],
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Welcome message
+                Text(
+                  '$_userName님 환영합니다',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff3B3C40),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                
+                // Display appropriate features based on user type
+                if (_isTrainer) ...[
+                  // Trainer features
+                  _buildFeatureCard(
+                    icon: Icons.chat,
+                    title: '채팅하기',
+                    description: '회원과 채팅으로 소통하세요',
+                    onTap: () => _navigateToScreen(const TrainerChatScreen()),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureCard(
+                    icon: Icons.calendar_today,
+                    title: '캘린더',
+                    description: 'PT 일정 관리 및 조회',
+                    onTap: () => _navigateToScreen(const CalendarScreen()),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureCard(
+                    icon: Icons.description,
+                    title: '계약 관리',
+                    description: '회원 계약 정보 관리',
+                    onTap: () => _navigateToScreen(const PtContractScreen()),
+                  ),
+                ] else ...[
+                  // Member features
+                  _buildFeatureCard(
+                    icon: Icons.chat,
+                    title: '채팅하기',
+                    description: '24시간 응답 가능한 챗봇',
+                    onTap: () => _navigateToScreen(const MemberChatScreen()),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureCard(
+                    icon: Icons.calendar_today,
+                    title: '캘린더',
+                    description: 'PT 일정 관리 및 조회',
+                    onTap: () => _navigateToScreen(const MemberCalendarScreen()),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),

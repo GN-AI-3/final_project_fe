@@ -113,21 +113,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final queryStartDate = startDate;
       final queryEndDate = endDate;
 
-      final schedules = await _scheduleService.getSchedules(
-        startTime: queryStartDate,
-        endTime: queryEndDate,
-      );
+      if (kDebugMode) {
+        print('Loading schedules from: ${queryStartDate?.toIso8601String() ?? 'now'} to ${queryEndDate?.toIso8601String() ?? 'now+30days'}');
+      }
+
+      List<Schedule> schedules = [];
+      try {
+        schedules = await _scheduleService.getSchedules(
+          startTime: queryStartDate,
+          endTime: queryEndDate,
+        );
+        
+        if (kDebugMode) {
+          print('Loaded schedules: ${schedules.length}');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error loading schedules: $e');
+        }
+        // 스케줄을 불러오는 중 오류가 발생해도 이미 불러온 데이터는 보여줌
+        schedules = [];
+      }
 
       if (!mounted) return;
 
       final meetings = schedules.map<Meeting>((Schedule schedule) {
-        return _createMeeting(schedule);
+        try {
+          return _createMeeting(schedule);
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error creating meeting from schedule: $e');
+            print('Schedule data: $schedule');
+          }
+          // 문제가 있는 스케줄은 건너뛰기
+          return Meeting(
+            '오류 발생 일정',
+            schedule.startTime,
+            schedule.endTime,
+            Colors.grey,
+            false,
+            id: schedule.id,
+            scheduleId: schedule.id,
+            description: '일정 정보를 불러오는 중 오류가 발생했습니다.',
+          );
+        }
       }).toList();
 
       if (!mounted) return;
 
       _state.meetings = meetings;
       _state.updateFilteredMeetings(meetings);
+      
+      if (_state.selectedStatus != null) {
+        _filterMeetings();
+      }
 
       if (mounted) {
         setState(() {});
@@ -144,11 +183,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _loadPtContracts() async {
     try {
+      if (kDebugMode) {
+        print('Loading PT contracts...');
+      }
+      
       final contracts = await _ptContractService.getContractMembers();
+      
+      if (kDebugMode) {
+        print('Loaded ${contracts.length} PT contracts');
+      }
+      
       if (mounted) {
         setState(() => _ptContracts = contracts);
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('Error loading PT contracts: $e');
+      }
+      
       if (mounted) {
         CustomToast.show(
           context: context,
@@ -666,6 +718,68 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     agendaViewHeight: 350,
                     appointmentDisplayCount: 6,
                   ),
+                  appointmentBuilder: (BuildContext context,
+                      CalendarAppointmentDetails calendarAppointmentDetails) {
+                    try {
+                      final Meeting meeting = calendarAppointmentDetails.appointments.first as Meeting;
+                      return Container(
+                        width: calendarAppointmentDetails.bounds.width,
+                        height: calendarAppointmentDetails.bounds.height,
+                        decoration: BoxDecoration(
+                          color: meeting.background,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              meeting.eventName,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${meeting.from.hour.toString().padLeft(2, '0')}:${meeting.from.minute.toString().padLeft(2, '0')} - ${meeting.to.hour.toString().padLeft(2, '0')}:${meeting.to.minute.toString().padLeft(2, '0')}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    } catch (e) {
+                      if (kDebugMode) {
+                        print('Error in appointmentBuilder: $e');
+                      }
+                      // 오류 발생 시 기본 UI 반환
+                      return Container(
+                        width: calendarAppointmentDetails.bounds.width,
+                        height: calendarAppointmentDetails.bounds.height,
+                        decoration: BoxDecoration(
+                          color: Colors.grey,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: const EdgeInsets.all(8.0),
+                        child: const Center(
+                          child: Text(
+                            '일정 정보 오류',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                  },
                   selectionDecoration: BoxDecoration(
                     color: Colors.transparent,
                     border: Border.all(
@@ -685,16 +799,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   showTodayButton: true,
                   onTap: (CalendarTapDetails details) {
                     if (details.targetElement == CalendarElement.appointment) {
-                      _showMeetingDetails(details.appointments![0] as Meeting);
+                      try {
+                        if (details.appointments != null && 
+                            details.appointments!.isNotEmpty && 
+                            details.appointments![0] is Meeting) {
+                          _showMeetingDetails(details.appointments![0] as Meeting);
+                        }
+                      } catch (e) {
+                        if (kDebugMode) {
+                          print('Error in onTap: $e');
+                        }
+                        // 오류 발생 시 처리하지 않음
+                      }
                     }
                   },
                   onLongPress: (CalendarLongPressDetails details) {
                     if (details.targetElement == CalendarElement.appointment) {
-                      final meeting = details.appointments![0] as Meeting;
-                      if (meeting.description != null &&
-                          !meeting.description!.contains('[취소된 일정]') &&
-                          !meeting.description!.contains('[변경된 일정]')) {
-                        _showMeetingOptions(meeting);
+                      try {
+                        if (details.appointments != null && 
+                            details.appointments!.isNotEmpty && 
+                            details.appointments![0] is Meeting) {
+                          final meeting = details.appointments![0] as Meeting;
+                          if (meeting.description != null &&
+                              !meeting.description!.contains('[취소된 일정]') &&
+                              !meeting.description!.contains('[변경된 일정]')) {
+                            _showMeetingOptions(meeting);
+                          }
+                        }
+                      } catch (e) {
+                        if (kDebugMode) {
+                          print('Error in onLongPress: $e');
+                        }
+                        // 오류 발생 시 처리하지 않음
                       }
                     }
                   },

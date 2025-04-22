@@ -12,7 +12,12 @@ import '../screens/trainer_chat_screen.dart';
 
 class TrainerChatService {
   static String get baseUrl => Env.getServerURL();
-  static final String? _authToken = dotenv.env['TRAINER_TOKEN'];
+  
+  // 토큰을 동적으로 가져오는 메소드
+  Future<String?> _getAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('TRAINER_TOKEN');
+  }
   
   // 트레이너 ID (실제로는 로그인 후 저장된 값을 사용해야 함)
   String? _trainerId;
@@ -45,6 +50,11 @@ class TrainerChatService {
     try {
       // 트레이너 ID 가져오기
       final trainerId = await _getTrainerId();
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
       
       if (kDebugMode) {
         print('Sending message with trainer ID: $trainerId');
@@ -58,7 +68,7 @@ class TrainerChatService {
         Uri.parse('$baseUrl/api/trainer/chat/send'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode({
@@ -105,6 +115,11 @@ class TrainerChatService {
     try {
       // 트레이너 ID 가져오기
       final trainerId = await _getTrainerId();
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
       
       if (kDebugMode) {
         print('Fetching recent messages for trainer: $trainerId');
@@ -114,7 +129,7 @@ class TrainerChatService {
         Uri.parse('$baseUrl/api/trainer/chat/recent?trainer_id=$trainerId'),
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
         },
       );
 

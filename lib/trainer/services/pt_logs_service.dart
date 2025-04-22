@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/env.dart';
 import '../../models/pt_log.dart';
@@ -39,14 +40,25 @@ class PtLogExercise {
 
 class PtLogsService {
   static String get baseUrl => Env.getServerURL();
-  static final String? _authToken = dotenv.env['TRAINER_TOKEN'];
   static const String _endpoint = '/api/trainer/chat/pt_log';
+
+  // 토큰을 동적으로 가져오는 메소드
+  Future<String?> _getAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('TRAINER_TOKEN');
+  }
 
   Future<PtLog> sendMessage(
     String message,
     int ptScheduleId,
   ) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       if (kDebugMode) {
         print('Request body: ${jsonEncode({
           'message': message,
@@ -58,7 +70,7 @@ class PtLogsService {
         Uri.parse('$baseUrl$_endpoint'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode({
@@ -96,11 +108,17 @@ class PtLogsService {
 
   Future<List<PtLogExercise>> getPtLogExercises(int ptScheduleId) async {
     try {
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+      
       final response = await http.get(
         Uri.parse('$baseUrl/api/pt-log-exercises/pt-schedule/$ptScheduleId'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
       );

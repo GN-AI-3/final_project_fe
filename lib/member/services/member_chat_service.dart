@@ -12,7 +12,12 @@ import '../screens/member_chat_screen.dart';
 
 class MemberChatService {
   static String get baseUrl => Env.getServerURL();
-  static final String? _authToken = dotenv.env['TRAINEE_TOKEN'];
+  
+  // 토큰을 동적으로 가져오는 메소드
+  Future<String?> _getAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('TRAINEE_TOKEN');
+  }
   
   // 회원 ID (실제로는 로그인 후 저장된 값을 사용해야 함)
   String? _memberId;
@@ -45,6 +50,11 @@ class MemberChatService {
     try {
       // 회원 ID 가져오기
       final memberId = await _getMemberId();
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
       
       if (kDebugMode) {
         print('Sending message with member ID: $memberId');
@@ -58,7 +68,7 @@ class MemberChatService {
         Uri.parse('$baseUrl/api/chat/send'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         },
         body: jsonEncode({
@@ -105,6 +115,11 @@ class MemberChatService {
     try {
       // 회원 ID 가져오기
       final memberId = await _getMemberId();
+      final token = await _getAuthToken();
+      
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
       
       if (kDebugMode) {
         print('Fetching recent messages for member: $memberId');
@@ -114,7 +129,7 @@ class MemberChatService {
         Uri.parse('$baseUrl/api/chat/recent?member_id=$memberId'),
         headers: {
           'Accept': 'application/json',
-          'Authorization': 'Bearer $_authToken',
+          'Authorization': 'Bearer $token',
         },
       );
 

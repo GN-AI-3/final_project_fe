@@ -294,7 +294,7 @@ class FCMService {
           htmlFormatBigText: false,
           contentTitle: title,
           htmlFormatContentTitle: false,
-          summaryText: '탭하여 전체 내용 보기',
+          summaryText: '펼쳐서 전체 내용 보기',
           htmlFormatSummaryText: false,
         );
 
@@ -314,6 +314,9 @@ class FCMService {
               autoCancel: true,
               showWhen: true,
               visibility: NotificationVisibility.public,
+              playSound: true,
+              fullScreenIntent: true,
+              largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
             ),
             iOS: const DarwinNotificationDetails(
               presentAlert: true,
@@ -401,7 +404,7 @@ class FCMService {
       htmlFormatBigText: false,
       contentTitle: title,
       htmlFormatContentTitle: false,
-      summaryText: '내일 PT 일정',
+      summaryText: '펼쳐서 전체 일정 보기',
       htmlFormatSummaryText: false,
     );
     
@@ -420,6 +423,7 @@ class FCMService {
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
       showWhen: true,
+      largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
     );
     
     final iosDetails = DarwinNotificationDetails(
@@ -513,7 +517,7 @@ class FCMService {
         htmlFormatBigText: false,
         contentTitle: title,
         htmlFormatContentTitle: false,
-        summaryText: '탭하여 전체 내용 보기',
+        summaryText: '펼쳐서 전체 일정 보기',
         htmlFormatSummaryText: false,
       );
 
@@ -534,6 +538,9 @@ class FCMService {
             autoCancel: true,
             showWhen: true,
             visibility: NotificationVisibility.public,
+            playSound: true,
+            fullScreenIntent: true,
+            largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -557,6 +564,16 @@ class FCMService {
   // 기본 알림
   static Future<void> _showDefaultNotification(int id, String title, String body) async {
     try {
+      // 알림 내용이 길 경우를 대비해 BigTextStyle 적용
+      final bigTextStyleInformation = BigTextStyleInformation(
+        body,
+        htmlFormatBigText: false,
+        contentTitle: title,
+        htmlFormatContentTitle: false,
+        summaryText: '펼쳐서 더 보기',
+        htmlFormatSummaryText: false,
+      );
+      
       final androidDetails = AndroidNotificationDetails(
         channels[0].id,
         channels[0].name,
@@ -564,6 +581,10 @@ class FCMService {
         importance: Importance.max,
         priority: Priority.high,
         icon: '@mipmap/ic_launcher',
+        styleInformation: bigTextStyleInformation,
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        visibility: NotificationVisibility.public,
+        autoCancel: true,
       );
       
       final iosDetails = DarwinNotificationDetails(
@@ -591,11 +612,11 @@ class FCMService {
     // 메시지 스타일 알림 대신 BigTextStyle 사용
     final bigTextStyleInformation = BigTextStyleInformation(
       body,
-      htmlFormatBigText: true,
+      htmlFormatBigText: false,
       contentTitle: title,
-      htmlFormatContentTitle: true,
-      summaryText: '새로운 채팅',
-      htmlFormatSummaryText: true,
+      htmlFormatContentTitle: false,
+      summaryText: '새로운 메시지',
+      htmlFormatSummaryText: false,
     );
     
     final androidDetails = AndroidNotificationDetails(
@@ -608,6 +629,8 @@ class FCMService {
       category: AndroidNotificationCategory.message,
       icon: '@mipmap/ic_launcher',
       largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+      visibility: NotificationVisibility.public,
+      autoCancel: true,
     );
     
     final iosDetails = DarwinNotificationDetails(

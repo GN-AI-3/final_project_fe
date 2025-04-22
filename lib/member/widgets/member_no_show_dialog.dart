@@ -50,7 +50,7 @@ class _MemberNoShowDialogState extends State<MemberNoShowDialog> {
     setState(() => _isLoading = true);
 
     try {
-      await widget.scheduleService.noShowSchedule(
+      await widget.scheduleService.markNoShow(
         scheduleId: widget.meeting.scheduleId!,
         reason: _reasonController.text,
       );

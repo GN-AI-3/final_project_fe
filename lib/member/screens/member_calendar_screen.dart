@@ -88,8 +88,19 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
   void initState() {
     super.initState();
     _isButtonVisible = true;
+    _selectedDate = DateTime.now();
     _state.updateSelectedStatus('scheduled');
-    _loadMeetings();
+    
+    // 현재 날짜로 초기 로딩
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+    
+    if (kDebugMode) {
+      print('초기 로딩 날짜 범위: ${startOfMonth.toString()} ~ ${endOfMonth.toString()}');
+    }
+    
+    _loadMeetings(startDate: startOfMonth, endDate: endOfMonth);
   }
 
   Future<void> _loadMeetings({DateTime? startDate, DateTime? endDate}) async {
@@ -102,15 +113,36 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
       final queryStartDate = startDate;
       final queryEndDate = endDate;
 
+      if (kDebugMode) {
+        print('Loading schedules from: ${queryStartDate?.toIso8601String() ?? 'now'} to ${queryEndDate?.toIso8601String() ?? 'now+30days'}');
+      }
+
       final schedules = await _scheduleService.getSchedules(
         startTime: queryStartDate,
         endTime: queryEndDate,
       );
 
-      final exerciseRecords = await _exerciseService.getExerciseRecords(
-        queryStartDate ?? DateTime.now(),
-        queryEndDate ?? DateTime.now().add(const Duration(days: 30)),
-      );
+      if (kDebugMode) {
+        print('Loaded schedules: ${schedules.length}');
+      }
+
+      List<GroupedExerciseRecord> exerciseRecords = [];
+      try {
+        exerciseRecords = await _exerciseService.getExerciseRecords(
+          queryStartDate ?? DateTime.now(),
+          queryEndDate ?? DateTime.now().add(const Duration(days: 30)),
+        );
+        
+        if (kDebugMode) {
+          print('Loaded exercise records: ${exerciseRecords.length}');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Exercise records loading error: $e');
+        }
+        // 운동 기록을 불러오는 데 실패해도 캘린더는 계속 표시
+        exerciseRecords = [];
+      }
 
       if (!mounted) return;
 
@@ -120,23 +152,25 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
           }).toList();
 
       // 운동 기록을 Meeting 객체로 변환하여 추가
-      for (var record in exerciseRecords) {
-        final date = DateTime.parse(record.date);
-        if (record.records.isNotEmpty) {
-          meetings.add(
-            Meeting(
-              '${date.month}월 ${date.day}일의 개인운동 기록',
-              date,
-              date,
-              const Color(0xff2746f8),
-              true,
-              textStyle: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w400,
+      if (exerciseRecords.isNotEmpty) {
+        for (var record in exerciseRecords) {
+          final date = DateTime.parse(record.date);
+          if (record.records.isNotEmpty) {
+            meetings.add(
+              Meeting(
+                '${date.month}월 ${date.day}일의 개인운동 기록',
+                date,
+                date,
+                const Color(0xff2746f8),
+                true,
+                textStyle: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w400,
+                ),
+                description: '운동 기록',
               ),
-              description: '운동 기록',
-            ),
-          );
+            );
+          }
         }
       }
 
@@ -239,103 +273,121 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                 ),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const SizedBox(
+                      height: 100,
+                      child: Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
                   }
                   if (snapshot.hasError) {
-                    return Text('오류가 발생했습니다: ${snapshot.error}');
+                    if (kDebugMode) {
+                      print('운동 기록 로딩 오류: ${snapshot.error}');
+                    }
+                    return Text('운동 기록을 불러올 수 없습니다.\n${snapshot.error.toString().length > 50 ? '${snapshot.error.toString().substring(0, 50)}...' : snapshot.error}');
                   }
                   if (!snapshot.hasData || snapshot.data!.isEmpty) {
                     return const Text('운동 기록이 없습니다.');
                   }
 
-                  final records = snapshot.data!;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children:
-                        records.expand((record) => record.records).map((
-                          exercise,
-                        ) {
-                          return GestureDetector(
-                            onLongPress: () {
-                              showModalBottomSheet(
-                                context: context,
-                                builder: (context) => SafeArea(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ListTile(
-                                        leading: const Icon(Icons.edit),
-                                        title: const Text('기록 수정'),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          _showExerciseRecordEditDialog(
-                                            exercise,
-                                            DateTime.parse(records.first.date),
-                                          );
-                                        },
-                                      ),
-                                      ListTile(
-                                        leading: const Icon(Icons.delete, color: Colors.red),
-                                        title: const Text(
-                                          '기록 삭제',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          // TODO: 삭제 기능 구현
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('삭제 기능은 아직 구현되지 않았습니다.'),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
+                  try {
+                    final records = snapshot.data!;
+                    final exercises = records.expand((record) => record.records).toList();
+                    
+                    if (exercises.isEmpty) {
+                      return const Text('운동 기록이 없습니다.');
+                    }
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: exercises.map((exercise) {
+                        return GestureDetector(
+                          onLongPress: () {
+                            showModalBottomSheet(
+                              context: context,
+                              builder: (context) => SafeArea(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      exercise.exerciseName,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
+                                    ListTile(
+                                      leading: const Icon(Icons.edit),
+                                      title: const Text('기록 수정'),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        _showExerciseRecordEditDialog(
+                                          exercise,
+                                          DateTime.parse(records.first.date),
+                                        );
+                                      },
                                     ),
-                                    if (exercise.recordData.isNotEmpty) ...[
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                        children: [
-                                          _buildExerciseDetail('무게', '${exercise.recordData['weight']}kg'),
-                                          _buildExerciseDetail('횟수', exercise.recordData['reps'].toString()),
-                                          _buildExerciseDetail('세트', exercise.recordData['sets'].toString()),
-                                        ],
+                                    ListTile(
+                                      leading: const Icon(Icons.delete, color: Colors.red),
+                                      title: const Text(
+                                        '기록 삭제',
+                                        style: TextStyle(color: Colors.red),
                                       ),
-                                    ],
-                                    if (exercise.memoData.isNotEmpty) ...[
-                                      const SizedBox(height: 16),
-                                      const Text(
-                                        '메모:',
-                                        style: TextStyle(fontWeight: FontWeight.w400),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(exercise.memoData['memo'] ?? ''),
-                                    ],
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        // TODO: 삭제 기능 구현
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('삭제 기능은 아직 구현되지 않았습니다.'),
+                                          ),
+                                        );
+                                      },
+                                    ),
                                   ],
                                 ),
                               ),
+                            );
+                          },
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    exercise.exerciseName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  if (exercise.recordData.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildExerciseDetail('무게', '${exercise.recordData['weight'] ?? 0}kg'),
+                                        _buildExerciseDetail('횟수', (exercise.recordData['reps'] ?? 0).toString()),
+                                        _buildExerciseDetail('세트', (exercise.recordData['sets'] ?? 0).toString()),
+                                      ],
+                                    ),
+                                  ],
+                                  if (exercise.memoData.isNotEmpty) ...[
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      '메모:',
+                                      style: TextStyle(fontWeight: FontWeight.w400),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(exercise.memoData['memo'] ?? ''),
+                                  ],
+                                ],
+                              ),
                             ),
-                          );
-                        }).toList(),
-                  );
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  } catch (e) {
+                    if (kDebugMode) {
+                      print('운동 기록 렌더링 오류: $e');
+                    }
+                    return Text('운동 기록을 표시할 수 없습니다: ${e.toString()}');
+                  }
                 },
               ),
             ],
@@ -504,7 +556,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         TextButton(
           onPressed: () async {
             try {
-              final memberId = _exerciseService.memberId;
+              final memberId = await _exerciseService.getMemberId();
               if (memberId == null) {
                 throw Exception('멤버 ID를 찾을 수 없습니다.');
               }
@@ -612,6 +664,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     final visibleDates = details.visibleDates;
     if (visibleDates.isEmpty) return;
 
+    // 현재 화면에 표시된 날짜 범위 계산
     final startDate = visibleDates.first;
     final endDate = DateTime(
       visibleDates.last.year,
@@ -622,9 +675,21 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
       59,
     );
 
+    // 캐싱된 데이터가 있는지 확인
     final cachedStart = _state.lastStartDate;
     final cachedEnd = _state.lastEndDate;
 
+    if (kDebugMode) {
+      print('캘린더 뷰 변경: ${startDate.toString()} ~ ${endDate.toString()}');
+      print('캐싱된 범위: ${cachedStart?.toString() ?? 'null'} ~ ${cachedEnd?.toString() ?? 'null'}');
+      
+      // 2025년 등 미래 년도인지 확인
+      if (startDate.year > DateTime.now().year + 1) {
+        print('경고: 미래 년도(${startDate.year})가 설정되었습니다. 현재 년도는 ${DateTime.now().year}입니다.');
+      }
+    }
+
+    // 새로운 데이터 로딩이 필요한지 확인
     final needsLoading =
         cachedStart == null ||
         cachedEnd == null ||
@@ -632,6 +697,9 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         endDate.isAfter(cachedEnd);
 
     if (needsLoading) {
+      if (kDebugMode) {
+        print('새로운 데이터 로딩: ${startDate.toString()} ~ ${endDate.toString()}');
+      }
       _state.updateLastDates(startDate, endDate);
       _loadMeetings(startDate: startDate, endDate: endDate);
     }
@@ -750,8 +818,8 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                   cellEndPadding: 0,
                   todayHighlightColor: const Color(0xff2746f8),
                   backgroundColor: const Color(0xfff0f0f0),
-                  initialSelectedDate: DateTime.now().toLocal(),
-                  initialDisplayDate: DateTime.now().toLocal(),
+                  initialSelectedDate: DateTime.now(),
+                  initialDisplayDate: DateTime.now(),
                   dataSource: MeetingDataSource(_state.filteredMeetings),
                   showDatePickerButton: true,
                   showTodayButton: true,
