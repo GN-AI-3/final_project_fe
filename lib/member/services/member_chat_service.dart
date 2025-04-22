@@ -50,7 +50,7 @@ class MemberChatService {
         print('Sending message with member ID: $memberId');
         print('Request body: ${jsonEncode({
           'content': message,
-          'member_id': memberId,
+          'role': 'member'
         })}');
       }
 
@@ -63,7 +63,7 @@ class MemberChatService {
         },
         body: jsonEncode({
           'content': message,
-          'member_id': memberId,
+          'role': 'member'
         }),
       );
 
