@@ -30,13 +30,11 @@ android {
     }
 
     signingConfigs {
-        if (keystorePropertiesFile.exists()) {
-            create("release") {
-                keyAlias = keystoreProperties["keyAlias"]?.toString() ?: ""
-                keyPassword = keystoreProperties["keyPassword"]?.toString() ?: ""
-                storeFile = keystoreProperties["storeFile"]?.let { file(it.toString()) }
-                storePassword = keystoreProperties["storePassword"]?.toString() ?: ""
-            }
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = file(keystoreProperties["storeFile"] as String)
+            storePassword = keystoreProperties["storePassword"] as String
         }
     }
 
@@ -50,12 +48,7 @@ android {
 
     buildTypes {
         release {
-            if (keystorePropertiesFile.exists() && keystoreProperties["storeFile"] != null) {
-                signingConfig = signingConfigs.getByName("release")
-            }
-        }
-        debug {
-            // debug 모드에서는 기본 서명 구성 사용
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }
