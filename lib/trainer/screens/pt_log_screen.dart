@@ -41,11 +41,13 @@ class PtLogConstants {
 class PtLogScreen extends StatefulWidget {
   final int scheduleId;
   final Meeting meeting;
+  final String title;
 
   const PtLogScreen({
     super.key,
     required this.scheduleId,
     required this.meeting,
+    this.title = 'PT 일지 작성',
   });
 
   @override
@@ -217,9 +219,11 @@ class PtLogScreenState extends State<PtLogScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(PtLogConstants.appTitle),
-        forceMaterialTransparency: true,
+        title: Text(widget.title),
         backgroundColor: const Color(0xfff0f0f0),
+        foregroundColor: Colors.black87,
+        elevation: 0,
+        forceMaterialTransparency: true,
       ),
       body: SafeArea(
         child: Container(

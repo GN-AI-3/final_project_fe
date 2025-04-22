@@ -9,8 +9,6 @@ import '../../trainer/services/schedule_service.dart';
 import '../../widgets/custom_dialog.dart';
 import '../screens/member_personal_exercise_screen.dart';
 import '../services/member_personal_exercise_service.dart';
-import '../widgets/member_change_schedule_dialog.dart';
-import '../widgets/member_no_show_dialog.dart';
 
 class MemberCalendarConstants {
   static const Map<String, String> statusDescriptions = {
@@ -227,11 +225,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
               Text('${meeting.description}'),
             ],
             if (meeting.description == '운동 기록') ...[
-              const Text(
-                '운동 기록 상세',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              const SizedBox(height: 16),
               FutureBuilder<List<GroupedExerciseRecord>>(
                 future: _exerciseService.getExerciseRecords(
                   meeting.from,
@@ -250,6 +243,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
 
                   final records = snapshot.data!;
                   return Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children:
                         records.expand((record) => record.records).map((
@@ -298,7 +292,12 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                             child: Card(
                               margin: const EdgeInsets.only(bottom: 8),
                               child: Padding(
-                                padding: const EdgeInsets.all(8.0),
+                                padding: const EdgeInsets.only(
+                                  left: 16,
+                                  right: 16,
+                                  top: 12,
+                                  bottom: 16,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -306,11 +305,11 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                                       exercise.exerciseName,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 18,
                                       ),
                                     ),
                                     if (exercise.recordData.isNotEmpty) ...[
-                                      const SizedBox(height: 12),
+                                      const SizedBox(height: 8),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                                         children: [
@@ -321,12 +320,11 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                                       ),
                                     ],
                                     if (exercise.memoData.isNotEmpty) ...[
-                                      const SizedBox(height: 16),
+                                      const SizedBox(height: 8),
                                       const Text(
                                         '메모:',
                                         style: TextStyle(fontWeight: FontWeight.w400),
                                       ),
-                                      const SizedBox(height: 4),
                                       Text(exercise.memoData['memo'] ?? ''),
                                     ],
                                   ],
@@ -356,82 +354,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
           child: const Text('닫기'),
         ),
       ],
-    );
-  }
-
-  void _showMeetingOptions(Meeting meeting) {
-    showModalBottomSheet(
-      context: context,
-      builder:
-          (context) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (meeting.description?.contains('[완료된 일정]') ?? false)
-                  ListTile(
-                    leading: const Icon(Icons.person_off, color: Colors.red),
-                    title: const Text(
-                      '불참 처리',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showNoShowDialog(meeting);
-                    },
-                  )
-                else ...[
-                  ListTile(
-                    leading: const Icon(Icons.edit),
-                    title: const Text('일정 수정'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showChangeScheduleDialog(meeting);
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-    );
-  }
-
-  void _showChangeScheduleDialog(Meeting meeting) {
-    CustomDialog.show(
-      context: context,
-      child: MemberChangeScheduleDialog(
-        scheduleService: _scheduleService,
-        meeting: meeting,
-        onScheduleChanged: () {
-          if (_state.lastStartDate != null && _state.lastEndDate != null) {
-            _loadMeetings(
-              startDate: _state.lastStartDate,
-              endDate: _state.lastEndDate,
-            );
-          } else {
-            _loadMeetings();
-          }
-        },
-      ),
-    );
-  }
-
-  void _showNoShowDialog(Meeting meeting) {
-    CustomDialog.show(
-      context: context,
-      child: MemberNoShowDialog(
-        meeting: meeting,
-        scheduleService: _scheduleService,
-        onNoShowProcessed: () {
-          if (_state.lastStartDate != null && _state.lastEndDate != null) {
-            _loadMeetings(
-              startDate: _state.lastStartDate,
-              endDate: _state.lastEndDate,
-            );
-          } else {
-            _loadMeetings();
-          }
-        },
-      ),
     );
   }
 
@@ -771,16 +693,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
                           });
                         }
                       });
-                    }
-                  },
-                  onLongPress: (CalendarLongPressDetails details) {
-                    if (details.targetElement == CalendarElement.appointment) {
-                      final meeting = details.appointments![0] as Meeting;
-                      if (meeting.description != null &&
-                          !meeting.description!.contains('[취소된 일정]') &&
-                          !meeting.description!.contains('[변경된 일정]')) {
-                        _showMeetingOptions(meeting);
-                      }
                     }
                   },
                   onViewChanged: _handleViewChanged,

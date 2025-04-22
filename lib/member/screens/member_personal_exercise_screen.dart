@@ -209,8 +209,8 @@ class MemberPersonalExerciseScreenState extends State<MemberPersonalExerciseScre
     }
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}년 ${date.month}월 ${date.day}일';
+  String _formatTitle(DateTime date) {
+    return '${date.year}년 ${date.month}월 ${date.day}일 개인 운동 기록하기';
   }
 
   @override
@@ -239,7 +239,7 @@ class MemberPersonalExerciseScreenState extends State<MemberPersonalExerciseScre
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _formatDate(widget.selectedDate),
+                      _formatTitle(widget.selectedDate),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

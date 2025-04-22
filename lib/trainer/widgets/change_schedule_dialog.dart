@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/meeting.dart';
+import '../../widgets/custom_dialog.dart';
 import '../../widgets/custom_toast.dart';
 import '../services/schedule_service.dart';
 
@@ -81,6 +82,11 @@ class _ChangeScheduleDialogState extends State<ChangeScheduleDialog> {
       );
 
       if (mounted) {
+        CustomToast.show(
+          context: context,
+          message: '일정이 성공적으로 변경되었습니다.',
+          type: ToastType.success,
+        );
         widget.onScheduleChanged();
         Navigator.pop(context);
       }
@@ -97,54 +103,42 @@ class _ChangeScheduleDialogState extends State<ChangeScheduleDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
+    return CustomDialog(
+      title: '일정 변경',
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDatePicker(),
+            Transform.translate(
+              offset: const Offset(0, -20),
+              child: _buildTimeSelector(),
             ),
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      '일정 변경',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDatePicker(),
-                    Transform.translate(
-                      offset: const Offset(0, -20),
-                      child: _buildTimeSelector(),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _reasonController,
-                      decoration: const InputDecoration(
-                        labelText: '변경 사유',
-                        hintText: '변경 사유를 입력하세요',
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildActionButtons(),
-                  ],
+            const SizedBox(height: 8),
+            TextField(
+              controller: _reasonController,
+              decoration: const InputDecoration(
+                labelText: '변경 사유',
+                hintText: '변경 사유를 입력하세요',
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: _isValid() ? _changeSchedule : null,
+          child: const Text('변경'),
+        ),
+      ],
     );
   }
 
@@ -204,22 +198,6 @@ class _ChangeScheduleDialogState extends State<ChangeScheduleDialog> {
           const Text('시', style: TextStyle(fontSize: 16)),
         ],
       ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('취소'),
-        ),
-        TextButton(
-          onPressed: _isValid() ? _changeSchedule : null,
-          child: const Text('변경'),
-        ),
-      ],
     );
   }
 }

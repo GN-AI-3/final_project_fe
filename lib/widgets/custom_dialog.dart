@@ -39,11 +39,11 @@ class CustomDialog extends StatelessWidget {
       backgroundColor: const Color(0xffF8F9FA),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
+        constraints: BoxConstraints(
           minWidth: 280,
-          maxWidth: 331.4,
+          maxWidth: MediaQuery.of(context).size.width * 0.9,
           minHeight: 0,
-          maxHeight: 795,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -76,22 +76,21 @@ class CustomDialog extends StatelessWidget {
                   ],
                 ),
               ),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: child ?? content,
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
                 ),
+                child: child ?? content,
               ),
             ),
             if (actions != null && actions!.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                padding: const EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: 12,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,

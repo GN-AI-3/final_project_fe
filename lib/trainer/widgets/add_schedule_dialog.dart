@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/pt_contract.dart';
 import '../../widgets/custom_dialog.dart';
+import '../../widgets/custom_toast.dart';
 import '../services/schedule_service.dart';
 
 
@@ -23,23 +24,25 @@ class AddScheduleDialog extends StatefulWidget {
 class _AddScheduleDialogState extends State<AddScheduleDialog> {
   PtContract? _selectedContract;
   DateTime? _selectedDate;
-  TimeOfDay _selectedTime = TimeOfDay.now();
-  final bool _isAm = true;
+  String _selectedAmPm = '오전';
+  int _selectedHour = 9;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
+    _selectedHour = TimeOfDay.now().hour;
+    _selectedAmPm = _selectedHour < 12 ? '오전' : '오후';
+    _selectedHour = _selectedHour % 12 == 0 ? 12 : _selectedHour % 12;
   }
 
   int _get24Hour() {
-    int hour = _selectedTime.hour;
-    if (!_isAm && hour != 12) {
-      hour += 12;
-    } else if (_isAm && hour == 12) {
-      hour = 0;
+    if (_selectedAmPm == '오후' && _selectedHour != 12) {
+      return _selectedHour + 12;
+    } else if (_selectedAmPm == '오전' && _selectedHour == 12) {
+      return 0;
     }
-    return hour;
+    return _selectedHour;
   }
 
   bool _validateForm() {
@@ -59,19 +62,16 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
       print('$message: $error');
     }
     if (mounted) {
-      showDialog(
+      CustomDialog.show(
         context: context,
-        builder:
-            (context) => CustomDialog(
-              title: '오류',
-              content: Text('$message: $error'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
+        title: '앗!',
+        content: Text('$message\n${error?.toString() ?? ''}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
       );
     }
   }
@@ -96,37 +96,22 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
       );
 
       if (mounted) {
-        _showSuccessDialog();
+        CustomToast.show(
+          context: context,
+          message: '일정이 성공적으로 추가되었습니다.',
+          type: ToastType.success,
+        );
+        Navigator.of(context).pop();
       }
     } catch (e) {
       _showError('일정 추가에 실패했습니다', e);
     }
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('일정 추가 완료'),
-            content: const Text('일정이 성공적으로 추가되었습니다.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('확인'),
-              ),
-            ],
-          ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('일정 추가'),
+    return CustomDialog(
+      title: '일정 추가',
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -134,8 +119,10 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
             _buildContractDropdown(),
             const SizedBox(height: 16),
             _buildDatePicker(),
-            const SizedBox(height: 16),
-            _buildTimePicker(),
+            Transform.translate(
+              offset: const Offset(0, -20),
+              child: _buildTimeSelector(),
+            ),
           ],
         ),
       ),
@@ -144,7 +131,14 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('취소'),
         ),
-        ElevatedButton(onPressed: _addSchedule, child: const Text('추가')),
+        TextButton(
+          onPressed: _addSchedule,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.blue,
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          child: const Text('추가'),
+        ),
       ],
     );
   }
@@ -179,99 +173,61 @@ class _AddScheduleDialogState extends State<AddScheduleDialog> {
   }
 
   Widget _buildDatePicker() {
-    return Row(
-      children: [
-        const Text('날짜: '),
-        TextButton(
-          onPressed: () async {
-            final date = await showDatePicker(
-              context: context,
-              initialDate: _selectedDate ?? DateTime.now(),
-              firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 365)),
-            );
-            if (date != null) {
-              setState(() => _selectedDate = date);
-            }
-          },
-          child: Text(
-            _selectedDate != null
-                ? '${_selectedDate!.year}년 ${_selectedDate!.month}월 ${_selectedDate!.day}일'
-                : '날짜 선택',
-          ),
-        ),
-      ],
+    return CalendarDatePicker(
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      onDateChanged: (date) => setState(() => _selectedDate = date),
     );
   }
 
-  Widget _buildTimePicker() {
-    return Row(
-      children: [
-        const Text('시간: '),
-        _buildTimeSelector(
-          'AM',
-          _selectedTime,
-          (value) => setState(() => _selectedTime = value),
-        ),
-        _buildTimeSelector(
-          'PM',
-          _selectedTime,
-          (value) => setState(() => _selectedTime = value),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeSelector(
-    String label,
-    TimeOfDay? time,
-    Function(TimeOfDay) onTimeSelected,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  Widget _buildTimeSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('시작 시간: ', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          DropdownButton<String>(
+            value: _selectedAmPm,
+            items:
+                ['오전', '오후'].map((value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value, style: const TextStyle(fontSize: 16)),
+                  );
+                }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedAmPm = value);
+              }
+            },
           ),
-        ),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: () async {
-            final selectedTime = await showTimePicker(
-              context: context,
-              initialTime: time ?? TimeOfDay.now(),
-            );
-            if (selectedTime != null) {
-              onTimeSelected(selectedTime);
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  time != null
-                      ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
-                      : '시간 선택',
-                  style: TextStyle(
-                    color: time != null ? Colors.black : Colors.grey,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.access_time, size: 20),
-              ],
-            ),
+          const SizedBox(width: 8),
+          DropdownButton<int>(
+            value: _selectedHour,
+            items:
+                List.generate(12, (index) => index + 1).map((value) {
+                  return DropdownMenuItem<int>(
+                    value: value,
+                    child: Text('$value', style: const TextStyle(fontSize: 16)),
+                  );
+                }).toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedHour = value);
+              }
+            },
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          const Text('시', style: TextStyle(fontSize: 16)),
+        ],
+      ),
     );
   }
 }
