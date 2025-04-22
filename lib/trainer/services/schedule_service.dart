@@ -275,48 +275,6 @@ abstract class ScheduleService {
     }
   }
 
-  /// 일정을 완료로 표시하는 메서드
-  Future<bool> markCompleted({
-    required int scheduleId,
-  }) async {
-    try {
-      final token = await getToken();
-      final response = await http.patch(
-        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/completed'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (kDebugMode) {
-        print('Response status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-      }
-
-      if (response.statusCode == 200) {
-        return true;
-      } else if (response.statusCode == 401) {
-        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
-      } else {
-        final error = jsonDecode(response.body);
-        throw Exception(error['error'] ?? '일정 완료 처리에 실패했습니다.');
-      }
-    } on SocketException catch (e) {
-      if (kDebugMode) {
-        print('SocketException: $e');
-      }
-      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
-    } catch (e, stackTrace) {
-      if (kDebugMode) {
-        print('Error in markCompleted: $e');
-        print('Stack trace: $stackTrace');
-      }
-      throw Exception('Error: $e');
-    }
-  }
-
   Map<String, String> _buildQueryParams(
     DateTime? startTime,
     DateTime? endTime,
