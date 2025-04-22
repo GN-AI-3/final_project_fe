@@ -426,10 +426,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         TextButton(
           onPressed: () async {
             try {
-              final memberId = _exerciseService.memberId;
-              if (memberId == null) {
-                throw Exception('멤버 ID를 찾을 수 없습니다.');
-              }
+              final memberId = await _exerciseService.getMemberId();
 
               final recordData = {
                 if (repsController.text.isNotEmpty) 'reps': int.parse(repsController.text),
