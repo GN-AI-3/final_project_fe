@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../models/pt_contract.dart';
 import '../../utils/date_formatter.dart';
@@ -19,7 +19,9 @@ class PtContractScreen extends StatefulWidget {
 class PtContractScreenState extends State<PtContractScreen> {
   final PtContractService _ptContractService = PtContractService();
   List<PtContract> _contracts = [];
+  List<PtContract> _filteredContracts = [];
   bool _isLoading = false;
+  final TextEditingController _searchController = TextEditingController();
 
   // 색상 상수 정의
   static const Color primaryColor = Color(0xff2746F8);
@@ -34,6 +36,22 @@ class PtContractScreenState extends State<PtContractScreen> {
   void initState() {
     super.initState();
     _loadContracts();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredContracts = _contracts.where((contract) {
+        return contract.memberName.toLowerCase().contains(query);
+      }).toList();
+    });
   }
 
   Future<void> _loadContracts() async {
@@ -49,11 +67,12 @@ class PtContractScreenState extends State<PtContractScreen> {
 
       setState(() {
         _contracts = contracts;
+        _filteredContracts = contracts;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-      
+
       setState(() {
         _isLoading = false;
       });
@@ -198,19 +217,19 @@ class PtContractScreenState extends State<PtContractScreen> {
 
   Future<void> _updateContractStatus(int contractId, String status) async {
     if (!mounted) return;
-    
+
     try {
       await _ptContractService.updateContractStatus(contractId, status);
       if (!mounted) return;
-      
+
       await _loadContracts();
     } catch (e) {
       if (!mounted) return;
-      
+
       if (kDebugMode) {
         print('Error updating contract status: $e');
       }
-      
+
       if (mounted) {
         CustomToast.show(
           context: context,
@@ -247,141 +266,146 @@ class PtContractScreenState extends State<PtContractScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => CustomDialog(
-        title: '계약 정보 수정',
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              '${contract.memberName} 회원님의 계약 정보',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: endDateController,
-              decoration: const InputDecoration(
-                labelText: '종료일',
-                border: OutlineInputBorder(),
-              ),
-              readOnly: true,
-              onTap: () async {
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: contract.endDate,
-                  firstDate: contract.startDate,
-                  lastDate: DateTime(2100),
-                );
-                if (picked != null && mounted) {
-                  endDateController.text = DateFormatter.formatDate(picked);
-                }
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: memoController,
-              decoration: const InputDecoration(
-                labelText: '메모',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: totalCountController,
-              decoration: const InputDecoration(
-                labelText: '총 PT 횟수',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 20),
-            if (_getAllowedStatuses(contract.status).length > 1)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    if (mounted) {
-                      _showStatusChangeDialog(contract);
+      builder:
+          (context) => CustomDialog(
+            title: '계약 정보 수정',
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 20),
+                Text(
+                  '${contract.memberName} 회원님의 계약 정보',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: endDateController,
+                  decoration: const InputDecoration(
+                    labelText: '종료일',
+                    border: OutlineInputBorder(),
+                  ),
+                  readOnly: true,
+                  onTap: () async {
+                    final DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: contract.endDate,
+                      firstDate: contract.startDate,
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null && mounted) {
+                      endDateController.text = DateFormatter.formatDate(picked);
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: _getStatusInfo(contract.status).$1,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: _getStatusInfo(contract.status).$1,
-                        width: 2,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: memoController,
+                  decoration: const InputDecoration(
+                    labelText: '메모',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: totalCountController,
+                  decoration: const InputDecoration(
+                    labelText: '총 PT 횟수',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 20),
+                if (_getAllowedStatuses(contract.status).length > 1)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        if (mounted) {
+                          _showStatusChangeDialog(contract);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: _getStatusInfo(contract.status).$1,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: _getStatusInfo(contract.status).$1,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        '상태 변경하기',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: _getStatusInfo(contract.status).$1,
+                        ),
                       ),
                     ),
                   ),
-                  child: Text(
-                    '상태 변경하기',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: _getStatusInfo(contract.status).$1,
-                    ),
-                  ),
-                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
               ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () async {
-              try {
-                final endDate = DateFormatter.parseDate(endDateController.text);
-                final totalCount = int.parse(totalCountController.text);
-                
-                if (totalCount < contract.usedCount) {
-                  throw Exception('총 PT 횟수는 사용한 횟수(${contract.usedCount}회)보다 작을 수 없습니다.');
-                }
+              TextButton(
+                onPressed: () async {
+                  try {
+                    final endDate = DateFormatter.parseDate(
+                      endDateController.text,
+                    );
+                    final totalCount = int.parse(totalCountController.text);
 
-                await _ptContractService.updateContract(
-                  contract.id,
-                  endDate: endDate,
-                  memo: memoController.text,
-                  totalCount: totalCount,
-                );
+                    if (totalCount < contract.usedCount) {
+                      throw Exception(
+                        '총 PT 횟수는 사용한 횟수(${contract.usedCount}회)보다 작을 수 없습니다.',
+                      );
+                    }
 
-                if (!mounted) return;
-                
-                // 다이얼로그를 닫기 전에 토스트 메시지를 표시
-                if (mounted) {
-                  CustomToast.show(
-                    context: context,
-                    message: '계약 정보가 수정되었습니다.',
-                    type: ToastType.success,
-                  );
-                }
-                
-                // 다이얼로그를 닫고 목록을 갱신
-                Navigator.pop(context);
-                if (mounted) {
-                  await _loadContracts();
-                }
-              } catch (e) {
-                if (!mounted) return;
-                if (mounted) {
-                  _showErrorDialog('계약 정보 수정 실패: $e');
-                }
-              }
-            },
-            child: const Text('수정'),
+                    await _ptContractService.updateContract(
+                      contract.id,
+                      endDate: endDate,
+                      memo: memoController.text,
+                      totalCount: totalCount,
+                    );
+
+                    if (!mounted) return;
+
+                    // 다이얼로그를 닫기 전에 토스트 메시지를 표시
+                    if (mounted) {
+                      CustomToast.show(
+                        context: context,
+                        message: '계약 정보가 수정되었습니다.',
+                        type: ToastType.success,
+                      );
+                    }
+
+                    // 다이얼로그를 닫고 목록을 갱신
+                    Navigator.pop(context);
+                    if (mounted) {
+                      await _loadContracts();
+                    }
+                  } catch (e) {
+                    if (!mounted) return;
+                    if (mounted) {
+                      _showErrorDialog('계약 정보 수정 실패: $e');
+                    }
+                  }
+                },
+                child: const Text('수정'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -404,6 +428,24 @@ class PtContractScreenState extends State<PtContractScreen> {
         iconTheme: const IconThemeData(color: textColor),
         forceMaterialTransparency: true,
         actions: [
+          SizedBox(
+            width: 150,
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: '이름으로 검색',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterMenu,
@@ -415,9 +457,9 @@ class PtContractScreenState extends State<PtContractScreen> {
           _isLoading
               ? const Center(child: CircularProgressIndicator())
               : ListView.builder(
-                itemCount: _contracts.length,
+                itemCount: _filteredContracts.length,
                 itemBuilder: (context, index) {
-                  final contract = _contracts[index];
+                  final contract = _filteredContracts[index];
                   return GestureDetector(
                     onLongPress: () => _showEditContractDialog(contract),
                     child: Container(
@@ -569,7 +611,6 @@ class PtContractScreenState extends State<PtContractScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 10), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

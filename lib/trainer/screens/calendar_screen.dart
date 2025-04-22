@@ -38,6 +38,9 @@ class CalendarConstants {
     CalendarView.month: CalendarView.schedule,
     CalendarView.schedule: CalendarView.day,
   };
+
+  // PT 기록 가능 시간 제한 (분 단위)
+  static const int ptLogTimeLimit = 60;
 }
 
 class CalendarState {
@@ -99,7 +102,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _loadMeetings();
     _loadPtContracts();
   }
 
@@ -110,18 +112,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _state.updateLoading(true);
 
     try {
-      final queryStartDate = startDate;
-      final queryEndDate = endDate;
-
       if (kDebugMode) {
-        print('Loading schedules from: ${queryStartDate?.toIso8601String() ?? 'now'} to ${queryEndDate?.toIso8601String() ?? 'now+30days'}');
+        print('Loading schedules from: ${startDate?.toIso8601String()} to ${endDate?.toIso8601String()}');
       }
 
       List<Schedule> schedules = [];
       try {
         schedules = await _scheduleService.getSchedules(
-          startTime: queryStartDate,
-          endTime: queryEndDate,
+          startTime: startDate,
+          endTime: endDate,
         );
         
         if (kDebugMode) {
@@ -131,32 +130,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (kDebugMode) {
           print('Error loading schedules: $e');
         }
-        // 스케줄을 불러오는 중 오류가 발생해도 이미 불러온 데이터는 보여줌
         schedules = [];
       }
 
       if (!mounted) return;
 
       final meetings = schedules.map<Meeting>((Schedule schedule) {
-        try {
-          return _createMeeting(schedule);
-        } catch (e) {
-          if (kDebugMode) {
-            print('Error creating meeting from schedule: $e');
-            print('Schedule data: $schedule');
-          }
-          // 문제가 있는 스케줄은 건너뛰기
-          return Meeting(
-            '오류 발생 일정',
-            schedule.startTime,
-            schedule.endTime,
-            Colors.grey,
-            false,
-            id: schedule.id,
-            scheduleId: schedule.id,
-            description: '일정 정보를 불러오는 중 오류가 발생했습니다.',
-          );
-        }
+        return _createMeeting(schedule);
       }).toList();
 
       if (!mounted) return;
@@ -284,9 +264,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 16),
           Text('시작 일시: ${_formatDateTime(meeting.from)}'),
           Text('종료 일시: ${_formatDateTime(meeting.to)}'),
-          if (meeting.description != null) Text('${meeting.description}'),
         ],
       ),
       actions: [
@@ -294,11 +274,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           TextButton(
             onPressed: () async {
               try {
-                final exercises = await _ptLogsService.getPtLogExercises(meeting.scheduleId!);
+                final exercises = await _ptLogsService.getPtLogExercises(
+                  meeting.scheduleId!,
+                );
                 if (!mounted) return;
-                
+
                 Navigator.pop(context);
-                _showPtLogDetails(exercises);
+                _showPtLogDetails(exercises, meeting);
               } catch (e) {
                 if (!mounted) return;
                 CustomToast.show(
@@ -310,21 +292,32 @@ class _CalendarScreenState extends State<CalendarScreen> {
             },
             child: const Text('일지 조회'),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PtLogScreen(
-                    scheduleId: meeting.scheduleId!,
-                    meeting: meeting,
+          if (meeting.description?.contains('[완료된 일정]') ?? false && _isWithinTimeLimit(meeting.from)) ...[
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PtLogScreen(
+                      scheduleId: meeting.scheduleId!,
+                      meeting: meeting,
+                      title: meeting.eventName.length >= 8
+                          ? '${meeting.eventName.substring(8)} 회원님 PT 기록'
+                          : '${meeting.eventName} 회원님 PT 기록',
+                    ),
                   ),
-                ),
-              );
-            },
-            child: const Text('PT 기록하기'),
-          ),
+                ).then((_) {
+                  if (_state.lastStartDate != null && _state.lastEndDate != null) {
+                    _loadMeetings(
+                      startDate: _state.lastStartDate,
+                      endDate: _state.lastEndDate,
+                    );
+                  }
+                });
+              },
+              child: const Text('PT 기록하기'),
+            ),
+          ],
         ],
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -334,50 +327,72 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showPtLogDetails(List<PtLogExercise> exercises) {
+  void _showPtLogDetails(List<PtLogExercise> exercises, Meeting meeting) {
     CustomDialog.show(
       context: context,
-      title: 'PT 일지',
+      title: 'PT 기록 - ${meeting.eventName.substring(9)}',
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: exercises.map((exercise) => Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    exercise.exerciseName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+          children:
+              exercises
+                  .map(
+                    (exercise) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 12,
+                          bottom: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              exercise.exerciseName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildExerciseDetail(
+                                  '무게',
+                                  '${exercise.weight}kg',
+                                ),
+                                _buildExerciseDetail(
+                                  '횟수',
+                                  exercise.reps.toString(),
+                                ),
+                                _buildExerciseDetail(
+                                  '세트',
+                                  exercise.sets.toString(),
+                                ),
+                                _buildExerciseDetail(
+                                  '휴식',
+                                  '${exercise.restTime}초',
+                                ),
+                              ],
+                            ),
+                            if (exercise.feedback?.isNotEmpty ?? false) ...[
+                              const SizedBox(height: 8),
+                              const Text(
+                                '피드백:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Text(exercise.feedback ?? ''),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildExerciseDetail('무게', '${exercise.weight}kg'),
-                      _buildExerciseDetail('횟수', exercise.reps.toString()),
-                      _buildExerciseDetail('세트', exercise.sets.toString()),
-                      _buildExerciseDetail('휴식', '${exercise.restTime}초'),
-                    ],
-                  ),
-                  if (exercise.feedback?.isNotEmpty ?? false) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      '피드백:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    Text(exercise.feedback ?? ''),
-                  ],
-                ],
-              ),
-            ),
-          )).toList(),
+                  )
+                  .toList(),
         ),
       ),
       actions: [
@@ -392,20 +407,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildExerciseDetail(String label, String value) {
     return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ],
     );
@@ -434,7 +440,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 else ...[
                   ListTile(
                     leading: const Icon(Icons.edit),
-                    title: const Text('일정 수정'),
+                    title: const Text('일정 변경'),
                     onTap: () {
                       Navigator.pop(context);
                       _showChangeScheduleDialog(meeting);
@@ -641,19 +647,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       59,
     );
 
-    final cachedStart = _state.lastStartDate;
-    final cachedEnd = _state.lastEndDate;
+    _state.updateLastDates(startDate, endDate);
+    _loadMeetings(startDate: startDate, endDate: endDate);
+  }
 
-    final needsLoading =
-        cachedStart == null ||
-        cachedEnd == null ||
-        startDate.isBefore(cachedStart) ||
-        endDate.isAfter(cachedEnd);
-
-    if (needsLoading) {
-      _state.updateLastDates(startDate, endDate);
-      _loadMeetings(startDate: startDate, endDate: endDate);
-    }
+  bool _isWithinTimeLimit(DateTime scheduleTime) {
+    final now = DateTime.now();
+    final difference = now.difference(scheduleTime).inMinutes.abs();
+    return difference <= CalendarConstants.ptLogTimeLimit;
   }
 
   @override
