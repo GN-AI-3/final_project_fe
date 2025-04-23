@@ -1,8 +1,9 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 import '../../member/services/member_personal_exercise_service.dart';
 import '../../models/exercise_record.dart';
@@ -41,7 +42,7 @@ class TrainingReportScreen extends StatelessWidget {
             unselectedLabelColor: Colors.grey,
             indicatorColor: Colors.blue,
             tabs: [
-              Tab(text: '비교'),
+              Tab(text: '개요'),
               Tab(text: '운동'),
               Tab(text: '식단'),
               Tab(text: '인바디'),
@@ -50,10 +51,10 @@ class TrainingReportScreen extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
-            ReportComparisonTab(ptContractId: 10,),
+            ReportComparisonTab(ptContractId: 10),
             ExerciseReportTab(),
-            DietReportTab(),
-            InbodyReportTab(),
+            DietReportTab(ptContractId: 10),
+            InbodyReportTab(ptContractId: 10),
           ],
         ),
       ),
@@ -63,11 +64,8 @@ class TrainingReportScreen extends StatelessWidget {
 
 class ReportComparisonTab extends StatefulWidget {
   final int ptContractId;
-  
-  const ReportComparisonTab({
-    super.key,
-    required this.ptContractId,
-  });
+
+  const ReportComparisonTab({super.key, required this.ptContractId});
 
   @override
   State<ReportComparisonTab> createState() => _ReportComparisonTabState();
@@ -145,19 +143,14 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
           children: [
             Text('오류가 발생했습니다: $_error'),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadReports,
-              child: const Text('다시 시도'),
-            ),
+            ElevatedButton(onPressed: _loadReports, child: const Text('다시 시도')),
           ],
         ),
       );
     }
 
     if (_reports == null || _reports!.length < 2) {
-      return const Center(
-        child: Text('비교할 리포트가 충분하지 않습니다.'),
-      );
+      return const Center(child: Text('비교할 리포트가 충분하지 않습니다.'));
     }
 
     final currentReport = _reports![1];
@@ -195,27 +188,41 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
                         entryRadius: 4,
                         dataEntries: [
                           RadarEntry(
-                            value: previousReport.exerciseReport.diligenceScore.toDouble() *
+                            value:
+                                previousReport.exerciseReport.diligenceScore
+                                    .toDouble() *
                                 _greenAnimation.value,
                           ),
                           RadarEntry(
-                            value: previousReport.exerciseReport.personalExerciseScore.toDouble() *
+                            value:
+                                previousReport
+                                    .exerciseReport
+                                    .personalExerciseScore
+                                    .toDouble() *
                                 _greenAnimation.value,
                           ),
                           RadarEntry(
-                            value: (previousReport.dietReport.dietScore ?? 0).toDouble() *
+                            value:
+                                (previousReport.dietReport.dietScore ?? 0)
+                                    .toDouble() *
                                 _greenAnimation.value,
                           ),
                           RadarEntry(
-                            value: previousReport.inbodyReport.bmiScore.toDouble() *
+                            value:
+                                previousReport.inbodyReport.bmiScore
+                                    .toDouble() *
                                 _greenAnimation.value,
                           ),
                           RadarEntry(
-                            value: previousReport.inbodyReport.bodyFatScore.toDouble() *
+                            value:
+                                previousReport.inbodyReport.bodyFatScore
+                                    .toDouble() *
                                 _greenAnimation.value,
                           ),
                           RadarEntry(
-                            value: previousReport.inbodyReport.skeletalMuscleScore.toDouble() *
+                            value:
+                                previousReport.inbodyReport.skeletalMuscleScore
+                                    .toDouble() *
                                 _greenAnimation.value,
                           ),
                         ],
@@ -229,27 +236,40 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
                         entryRadius: 4,
                         dataEntries: [
                           RadarEntry(
-                            value: currentReport.exerciseReport.diligenceScore.toDouble() *
+                            value:
+                                currentReport.exerciseReport.diligenceScore
+                                    .toDouble() *
                                 _blueAnimation.value,
                           ),
                           RadarEntry(
-                            value: currentReport.exerciseReport.personalExerciseScore.toDouble() *
+                            value:
+                                currentReport
+                                    .exerciseReport
+                                    .personalExerciseScore
+                                    .toDouble() *
                                 _blueAnimation.value,
                           ),
                           RadarEntry(
-                            value: (currentReport.dietReport.dietScore ?? 0).toDouble() *
+                            value:
+                                (currentReport.dietReport.dietScore ?? 0)
+                                    .toDouble() *
                                 _blueAnimation.value,
                           ),
                           RadarEntry(
-                            value: currentReport.inbodyReport.bmiScore.toDouble() *
+                            value:
+                                currentReport.inbodyReport.bmiScore.toDouble() *
                                 _blueAnimation.value,
                           ),
                           RadarEntry(
-                            value: currentReport.inbodyReport.bodyFatScore.toDouble() *
+                            value:
+                                currentReport.inbodyReport.bodyFatScore
+                                    .toDouble() *
                                 _blueAnimation.value,
                           ),
                           RadarEntry(
-                            value: currentReport.inbodyReport.skeletalMuscleScore.toDouble() *
+                            value:
+                                currentReport.inbodyReport.skeletalMuscleScore
+                                    .toDouble() *
                                 _blueAnimation.value,
                           ),
                         ],
@@ -327,23 +347,26 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
           const SizedBox(height: 32),
           _ReportDetailSection(
             title: '운동 리포트',
-            data: _showCurrentData
-                ? currentReport.exerciseReport
-                : previousReport.exerciseReport,
+            data:
+                _showCurrentData
+                    ? currentReport.exerciseReport
+                    : previousReport.exerciseReport,
           ),
           const SizedBox(height: 24),
           _ReportDetailSection(
             title: '식단 리포트',
-            data: _showCurrentData
-                ? currentReport.dietReport
-                : previousReport.dietReport,
+            data:
+                _showCurrentData
+                    ? currentReport.dietReport
+                    : previousReport.dietReport,
           ),
           const SizedBox(height: 24),
           _ReportDetailSection(
             title: '인바디 리포트',
-            data: _showCurrentData
-                ? currentReport.inbodyReport
-                : previousReport.inbodyReport,
+            data:
+                _showCurrentData
+                    ? currentReport.inbodyReport
+                    : previousReport.inbodyReport,
           ),
         ],
       ),
@@ -374,8 +397,14 @@ class _ReportDetailSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (title == '운동 리포트') ...[
-                  _buildScoreRow('성실도 점수', (data as ExerciseReport).diligenceScore),
-                  _buildScoreRow('개인운동 점수', (data as ExerciseReport).personalExerciseScore),
+                  _buildScoreRow(
+                    '성실도 점수',
+                    (data as ExerciseReport).diligenceScore,
+                  ),
+                  _buildScoreRow(
+                    '개인운동 점수',
+                    (data as ExerciseReport).personalExerciseScore,
+                  ),
                   const SizedBox(height: 16),
                   _buildSectionTitle('운동 성과 요약'),
                   Text(
@@ -412,7 +441,10 @@ class _ReportDetailSection extends StatelessWidget {
                     ),
                   ),
                 ] else if (title == '식단 리포트') ...[
-                  _buildScoreRow('식단 평가 점수', (data as DietReport).dietScore ?? 0),
+                  _buildScoreRow(
+                    '식단 평가 점수',
+                    (data as DietReport).dietScore ?? 0,
+                  ),
                   const SizedBox(height: 16),
                   _buildSectionTitle('식단 평가 요약'),
                   Text(
@@ -450,8 +482,14 @@ class _ReportDetailSection extends StatelessWidget {
                   ),
                 ] else if (title == '인바디 리포트') ...[
                   _buildScoreRow('BMI 점수', (data as InbodyReport).bmiScore),
-                  _buildScoreRow('골격근량 점수', (data as InbodyReport).skeletalMuscleScore),
-                  _buildScoreRow('체지방률 점수', (data as InbodyReport).bodyFatScore),
+                  _buildScoreRow(
+                    '골격근량 점수',
+                    (data as InbodyReport).skeletalMuscleScore,
+                  ),
+                  _buildScoreRow(
+                    '체지방률 점수',
+                    (data as InbodyReport).bodyFatScore,
+                  ),
                   const SizedBox(height: 16),
                   _buildSectionTitle('체성분 현황'),
                   Text(
@@ -596,7 +634,8 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _tabs = ['종합', '운동 추이', 'PT 비교', '운동 기록'];
-  final MemberPersonalExerciseService _personalExerciseService = MemberPersonalExerciseService();
+  final MemberPersonalExerciseService _personalExerciseService =
+      MemberPersonalExerciseService();
   List<GroupedExerciseRecord> _exerciseRecords = [];
   final List<PtLogExercise> _ptLogExercises = [];
   bool _isLoading = true;
@@ -606,11 +645,11 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
   List<Map<String, dynamic>> get _weeklyData {
     final now = DateTime.now();
     final List<Map<String, dynamic>> data = [];
-    
+
     for (int i = 3; i >= 0; i--) {
       final weekStart = now.subtract(Duration(days: i * 7));
       final weekEnd = weekStart.add(const Duration(days: 6));
-      
+
       int count = 0;
       for (var record in _exerciseRecords) {
         final recordDate = DateTime.parse(record.date);
@@ -618,20 +657,17 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           count++;
         }
       }
-      
-      data.add({
-        'week': '${i + 1}주차',
-        'count': count,
-      });
+
+      data.add({'week': '${i + 1}주차', 'count': count});
     }
-    
+
     return data;
   }
 
   // 주요 운동 데이터 계산
   List<Map<String, dynamic>> get _exerciseData {
     final Map<String, List<int>> exerciseWeights = {};
-    
+
     for (var record in _exerciseRecords) {
       for (var exercise in record.records) {
         final weight = exercise.recordData['weight'] as int? ?? 0;
@@ -641,14 +677,12 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         exerciseWeights[exercise.exerciseName]!.add(weight);
       }
     }
-    
+
     return exerciseWeights.entries.map((entry) {
       final weights = entry.value;
-      final maxWeight = weights.isEmpty ? 0 : weights.reduce((a, b) => a > b ? a : b);
-      return {
-        'exercise': entry.key,
-        'weight': maxWeight,
-      };
+      final maxWeight =
+          weights.isEmpty ? 0 : weights.reduce((a, b) => a > b ? a : b);
+      return {'exercise': entry.key, 'weight': maxWeight};
     }).toList();
   }
 
@@ -669,9 +703,12 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       // 최근 1개월간의 운동 기록 가져오기
       final endTime = DateTime.now();
       final startTime = endTime.subtract(const Duration(days: 30));
-      
-      final records = await _personalExerciseService.getExerciseRecords(startTime, endTime);
-      
+
+      final records = await _personalExerciseService.getExerciseRecords(
+        startTime,
+        endTime,
+      );
+
       setState(() {
         _exerciseRecords = records;
         _isLoading = false;
@@ -683,7 +720,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       });
     }
   }
-
 
   @override
   void dispose() {
@@ -807,9 +843,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           ),
           const SizedBox(height: 16),
           if (_exerciseRecords.isEmpty && _ptLogExercises.isEmpty)
-            const Center(
-              child: Text('최근 30일간의 운동 기록이 없습니다.'),
-            )
+            const Center(child: Text('최근 30일간의 운동 기록이 없습니다.'))
           else ...[
             if (_exerciseRecords.isNotEmpty) ...[
               const Text(
@@ -824,7 +858,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                 itemBuilder: (context, index) {
                   final record = _exerciseRecords[index];
                   final date = DateTime.parse(record.date);
-                  
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 16),
                     child: Column(
@@ -840,26 +874,33 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                             ),
                           ),
                         ),
-                        ...record.records.map((exercise) => ListTile(
-                          title: Text(exercise.exerciseName),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ...exercise.translatedRecordData.entries.map(
-                                (entry) => Text('${entry.key}: ${entry.value}'),
-                              ),
-                              if (exercise.memoData['memo'] != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  '메모: ${exercise.memoData['memo']}',
-                                  style: const TextStyle(
-                                    fontStyle: FontStyle.italic,
-                                  ),
+                        ...record.records
+                            .map(
+                              (exercise) => ListTile(
+                                title: Text(exercise.exerciseName),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ...exercise.translatedRecordData.entries
+                                        .map(
+                                          (entry) => Text(
+                                            '${entry.key}: ${entry.value}',
+                                          ),
+                                        ),
+                                    if (exercise.memoData['memo'] != null) ...[
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '메모: ${exercise.memoData['memo']}',
+                                        style: const TextStyle(
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                              ],
-                            ],
-                          ),
-                        )).toList(),
+                              ),
+                            )
+                            .toList(),
                       ],
                     ),
                   );
@@ -934,12 +975,13 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           borderData: FlBorderData(show: true),
           lineBarsData: [
             LineChartBarData(
-              spots: _weeklyData.asMap().entries.map((entry) {
-                return FlSpot(
-                  entry.key.toDouble(),
-                  (entry.value['count'] as int).toDouble(),
-                );
-              }).toList(),
+              spots:
+                  _weeklyData.asMap().entries.map((entry) {
+                    return FlSpot(
+                      entry.key.toDouble(),
+                      (entry.value['count'] as int).toDouble(),
+                    );
+                  }).toList(),
               isCurved: true,
               color: Colors.blue,
               barWidth: 3,
@@ -953,9 +995,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
 
   Widget _buildExerciseComparisonChart() {
     if (_exerciseData.isEmpty) {
-      return const Center(
-        child: Text('운동 기록이 없습니다.'),
-      );
+      return const Center(child: Text('운동 기록이 없습니다.'));
     }
 
     return SizedBox(
@@ -963,31 +1003,37 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY: _exerciseData.fold<double>(
-            0,
-            (max, item) => math.max(max, (item['weight'] as int).toDouble()),
-          ) * 1.2,
-          barGroups: _exerciseData.asMap().entries.map((entry) {
-            return BarChartGroupData(
-              x: entry.key,
-              barRods: [
-                BarChartRodData(
-                  toY: (entry.value['weight'] as int).toDouble(),
-                  color: Colors.blue,
-                  width: 20,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4),
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
+          maxY:
+              _exerciseData.fold<double>(
+                0,
+                (max, item) =>
+                    math.max(max, (item['weight'] as int).toDouble()),
+              ) *
+              1.2,
+          barGroups:
+              _exerciseData.asMap().entries.map((entry) {
+                return BarChartGroupData(
+                  x: entry.key,
+                  barRods: [
+                    BarChartRodData(
+                      toY: (entry.value['weight'] as int).toDouble(),
+                      color: Colors.blue,
+                      width: 20,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  return Text(_exerciseData[value.toInt()]['exercise'] as String);
+                  return Text(
+                    _exerciseData[value.toInt()]['exercise'] as String,
+                  );
                 },
               ),
             ),
@@ -1063,7 +1109,12 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
 }
 
 class DietReportTab extends StatefulWidget {
-  const DietReportTab({super.key});
+  final int ptContractId;
+  
+  const DietReportTab({
+    super.key,
+    required this.ptContractId,
+  });
 
   @override
   State<DietReportTab> createState() => _DietReportTabState();
@@ -1073,11 +1124,30 @@ class _DietReportTabState extends State<DietReportTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _tabs = ['종합', '영양소 분석', '식사 패턴', '식단 갤러리'];
+  Report? _currentReport;
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _loadReport();
+  }
+
+  Future<void> _loadReport() async {
+    try {
+      final reports = await ReportService.getLatestReports(widget.ptContractId);
+      setState(() {
+        _currentReport = reports.isNotEmpty ? reports[0] : null;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -1088,6 +1158,32 @@ class _DietReportTabState extends State<DietReportTab>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('오류가 발생했습니다: $_error'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadReport,
+              child: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_currentReport == null) {
+      return const Center(
+        child: Text('식단 리포트가 없습니다.'),
+      );
+    }
+
     return Column(
       children: [
         TabBar(
@@ -1113,24 +1209,22 @@ class _DietReportTabState extends State<DietReportTab>
   }
 
   Widget _buildOverallTab() {
+    final dietReport = _currentReport!.dietReport;
     final dietData = [
       ReportData(
         category: '식단 평가 점수',
-        score: 65,
-        description:
-            '현재 식단은 기본적인 영양소 균형은 갖추었으나, 단백질 섭취량이 목표치에 비해 부족하고, 탄수화물의 비중이 높은 편입니다.',
+        score: (dietReport.dietScore ?? 0).toDouble(),
+        description: dietReport.recentDietPattern ?? '데이터가 없습니다.',
       ),
       ReportData(
         category: '강점 및 잘 구성된 습관',
         score: 80,
-        description:
-            '닭가슴살과 같은 저지방 고단백 식품을 주로 섭취하는 점은 체형 관리 목표에 부합합니다. 또한, 다양한 과일과 채소(블루베리, 사과 등)를 포함하여 비타민과 미네랄 섭취를 고려한 점이 긍정적입니다.',
+        description: dietReport.strengths ?? '데이터가 없습니다.',
       ),
       ReportData(
         category: '개선이 필요한 부분',
         score: 50,
-        description:
-            '간식 섭취가 잦고, 특히 저녁 시간대의 과도한 탄수화물 섭취가 체지방 감소에 방해가 되고 있습니다. 또한, 수분 섭취량이 부족한 편입니다.',
+        description: dietReport.problems ?? '데이터가 없습니다.',
       ),
     ];
 
@@ -1145,6 +1239,25 @@ class _DietReportTabState extends State<DietReportTab>
           ),
           const SizedBox(height: 24),
           ...dietData.map((data) => _ReportCard(data: data)),
+          const SizedBox(height: 24),
+          const Text(
+            '트레이너 코멘트',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                dietReport.trainerMent ?? '데이터가 없습니다.',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.blue,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1403,26 +1516,80 @@ class _DietReportTabState extends State<DietReportTab>
   }
 }
 
-class InbodyReportTab extends StatelessWidget {
-  const InbodyReportTab({super.key});
+class InbodyReportTab extends StatefulWidget {
+  final int ptContractId;
+
+  const InbodyReportTab({super.key, required this.ptContractId});
+
+  @override
+  State<InbodyReportTab> createState() => _InbodyReportTabState();
+}
+
+class _InbodyReportTabState extends State<InbodyReportTab> {
+  Report? _currentReport;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReport();
+  }
+
+  Future<void> _loadReport() async {
+    try {
+      final reports = await ReportService.getLatestReports(widget.ptContractId);
+      setState(() {
+        _currentReport = reports.isNotEmpty ? reports[0] : null;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('오류가 발생했습니다: $_error'),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _loadReport, child: const Text('다시 시도')),
+          ],
+        ),
+      );
+    }
+
+    if (_currentReport == null) {
+      return const Center(child: Text('인바디 리포트가 없습니다.'));
+    }
+
+    final inbodyReport = _currentReport!.inbodyReport;
     final inbodyData = [
       ReportData(
         category: 'BMI 점수',
-        score: 80,
-        description: '현재 BMI 21은 적정 범위인 21~23에 해당하여 80점 이상으로 평가됩니다.',
+        score: inbodyReport.bmiScore.toDouble(),
+        description: inbodyReport.bmiAnalysis,
       ),
       ReportData(
         category: '골격근량 점수',
-        score: 85,
-        description: '현재 골격근량 33.0kg은 남성 기준 32kg 이상에 해당하여 80점 이상으로 평가됩니다.',
+        score: inbodyReport.skeletalMuscleScore.toDouble(),
+        description: inbodyReport.skeletalMuscleAnalysis,
       ),
       ReportData(
         category: '체지방률 점수',
-        score: 85,
-        description: '현재 체지방률 17.4%는 남성 기준 13~17%에 해당하여 80점 이상으로 평가됩니다.',
+        score: inbodyReport.bodyFatScore.toDouble(),
+        description: inbodyReport.bodyFatAnalysis,
       ),
     ];
 
@@ -1437,6 +1604,40 @@ class InbodyReportTab extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ...inbodyData.map((data) => _ReportCard(data: data)),
+          const SizedBox(height: 24),
+          const Text(
+            '인바디 평가',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                inbodyReport.summary,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            '트레이너 코멘트',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                inbodyReport.trainerMent,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.blue,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

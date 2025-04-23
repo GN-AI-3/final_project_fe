@@ -179,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 16),
                   _buildFeatureCard(
                     icon: Icons.assessment,
-                    title: '보고서 Beta 2.0+',
+                    title: '트레이닝 리포트 βeta+',
                     description: '회원의 운동, 식단 보고서를 확인하세요',
                     onTap: () => _navigateToScreen(const TrainingReportScreen()),
                   ),
