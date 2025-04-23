@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 enum ToastType { success, error, warning, info }
@@ -77,7 +79,7 @@ class _ToastWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 1),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -88,7 +90,7 @@ class _ToastWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: _getColor().withValues(alpha: 1),
+                color: _getColor().withOpacity(0.11),
                 shape: BoxShape.circle,
               ),
               child: Icon(_getIcon(), color: _getColor(), size: 20),

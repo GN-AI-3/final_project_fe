@@ -154,8 +154,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _state.updateFilteredMeetings(
         meetings.where((meeting) {
           final status = meeting.description?.split('\n')[0];
+          // scheduled 상태는 description이 null이거나 '남은 PT: X회' 형식
+          // completed 상태는 description이 '[완료된 일정]' 형식
           return status == null || 
-                 status == CalendarConstants.statusDescriptions['scheduled'] ||
+                 !status.contains('[') || // scheduled 상태
                  status == CalendarConstants.statusDescriptions['completed'];
         }).toList(),
       );
