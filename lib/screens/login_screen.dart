@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -80,24 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   Center(
                     child: Image.asset(
                       'assets/icon/app_icon.png',
-                      width: 100,
-                      height: 100,
+                      width: 250,
+                      height: 250,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  
-                  // App name
-                  const Text(
-                    'GYMGGUN',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  
+
                   // User type selection
                   Row(
                     children: [
@@ -128,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Email field
                   TextFormField(
                     controller: _emailController,
@@ -150,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Password field
                   TextFormField(
                     controller: _passwordController,
@@ -168,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Error message
                   if (_errorMessage != null)
                     Padding(
@@ -179,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                  
+
                   // Login button
                   ElevatedButton(
                     onPressed: _isLoading ? null : _login,
@@ -190,19 +178,25 @@ class _LoginScreenState extends State<LoginScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    child:
+                        _isLoading
+                            ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                            : const Text(
+                              '로그인',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
                             ),
-                          )
-                        : const Text(
-                            '로그인',
-                            style: TextStyle(fontSize: 16, color: Colors.white),
-                          ),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -213,4 +207,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-} 
+}
