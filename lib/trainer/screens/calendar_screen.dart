@@ -8,6 +8,7 @@ import '../../models/schedule.dart';
 import '../../widgets/custom_dialog.dart';
 import '../../widgets/custom_toast.dart';
 import '../screens/pt_log_screen.dart';
+import '../screens/training_report_screen.dart';
 import '../services/pt_contract_service.dart';
 import '../services/pt_logs_service.dart';
 import '../services/schedule_service.dart';
@@ -149,16 +150,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (!mounted) return;
 
       _state.meetings = meetings;
-      
+
       // 초기 필터링: scheduled와 completed 상태의 일정만 표시
       _state.updateFilteredMeetings(
         meetings.where((meeting) {
           final status = meeting.description?.split('\n')[0];
           // scheduled 상태는 description이 null이거나 '남은 PT: X회' 형식
           // completed 상태는 description이 '[완료된 일정]' 형식
-          return status == null || 
-                 !status.contains('[') || // scheduled 상태
-                 status == CalendarConstants.statusDescriptions['completed'];
+          return status == null ||
+              !status.contains('[') || // scheduled 상태
+              status == CalendarConstants.statusDescriptions['completed'];
         }).toList(),
       );
 
@@ -225,6 +226,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       false,
       id: schedule.id,
       scheduleId: schedule.id,
+      ptContractId: schedule.ptContractId,
       description:
           schedule.status.toLowerCase() == 'scheduled'
               ? '남은 PT: ${schedule.remainingPtCount}회'
@@ -300,16 +302,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             constraints: BoxConstraints(maxWidth: 300),
           ),
-          items: _ptContracts
-              .where((contract) => contract.status.toLowerCase() == 'active')
-              .map((contract) {
-                return DropdownMenuItem<PtContract>(
-                  value: contract,
-                  child: Text(
-                    '${contract.memberName} - 남은 PT: ${contract.remainingCount}회',
-                  ),
-                );
-              }).toList(),
+          items:
+              _ptContracts
+                  .where(
+                    (contract) => contract.status.toLowerCase() == 'active',
+                  )
+                  .map((contract) {
+                    return DropdownMenuItem<PtContract>(
+                      value: contract,
+                      child: Text(
+                        '${contract.memberName} - 남은 PT: ${contract.remainingCount}회',
+                      ),
+                    );
+                  })
+                  .toList(),
           onChanged: (value) => setState(() => _selectedContract = value),
         ),
       ),
@@ -458,7 +464,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 }
               },
               icon: const Icon(Icons.history),
-              label: const Text('일지 조회'),
+              label: const Text('PT 일지 조회'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
@@ -471,32 +477,58 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => PtLogScreen(
-                      scheduleId: meeting.scheduleId!,
-                      meeting: meeting,
-                      title: meeting.eventName.length >= 8
-                          ? '${meeting.eventName.substring(8)} 회원님 PT 기록'
-                          : '${meeting.eventName} 회원님 PT 기록',
-                    ),
+                    builder:
+                        (context) => TrainingReportScreen(
+                          ptContractId: meeting.ptContractId!,
+                        ),
                   ),
-                ).then((_) {
-                  if (_state.lastStartDate != null && _state.lastEndDate != null) {
-                    _loadMeetings(
-                      startDate: _state.lastStartDate,
-                      endDate: _state.lastEndDate,
-                    );
-                  }
-                });
+                );
               },
-              icon: const Icon(Icons.edit_note),
-              label: const Text('PT 기록하기'),
+              icon: const Icon(Icons.assessment),
+              label: const Text('트레이닝 리포트'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: Colors.purple,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 45),
               ),
             ),
             const SizedBox(height: 8),
+            if (DateTime.now().difference(meeting.to).inHours <= 2) ...[
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => PtLogScreen(
+                            scheduleId: meeting.scheduleId!,
+                            meeting: meeting,
+                            title:
+                                meeting.eventName.length >= 8
+                                    ? '${meeting.eventName.substring(8)} 회원님 PT 기록'
+                                    : '${meeting.eventName} 회원님 PT 기록',
+                          ),
+                    ),
+                  ).then((_) {
+                    if (_state.lastStartDate != null &&
+                        _state.lastEndDate != null) {
+                      _loadMeetings(
+                        startDate: _state.lastStartDate,
+                        endDate: _state.lastEndDate,
+                      );
+                    }
+                  });
+                },
+                icon: const Icon(Icons.edit_note),
+                label: const Text('PT 기록하기'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 45),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(context);
@@ -518,7 +550,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 Navigator.pop(context);
                 _showChangeScheduleDialog(meeting);
               },
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_calendar),
               label: const Text('일정 변경'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
@@ -1078,9 +1110,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         if (details.appointments != null &&
                             details.appointments!.isNotEmpty &&
                             details.appointments![0] is Meeting) {
-                          _showMeetingDetails(
-                            details.appointments![0] as Meeting,
-                          );
+                          final meeting = details.appointments![0] as Meeting;
+                          // 변경된 일정이나 취소된 일정은 탭해도 아무 동작도 하지 않음
+                          if (meeting.description?.contains('[변경된 일정]') ??
+                              false ||
+                                  meeting.description!.contains('[취소된 일정]')) {
+                            return;
+                          }
+                          _showMeetingDetails(meeting);
                         }
                       } catch (e) {
                         if (kDebugMode) {

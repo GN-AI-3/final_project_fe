@@ -5,7 +5,6 @@ import '../member/screens/member_chat_screen.dart';
 import '../member/screens/member_profile_screen.dart';
 import '../trainer/screens/calendar_screen.dart';
 import '../trainer/screens/pt_contract_screen.dart';
-import '../trainer/screens/training_report_screen.dart';
 import '../trainer/screens/trainer_chat_screen.dart';
 import '../services/auth_service.dart';
 import '../widgets/custom_dialog.dart';
@@ -175,13 +174,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: '계약 관리',
                     description: '회원 계약 정보 관리',
                     onTap: () => _navigateToScreen(const PtContractScreen()),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildFeatureCard(
-                    icon: Icons.assessment,
-                    title: '트레이닝 리포트 βeta+',
-                    description: '회원의 운동, 식단 보고서를 확인하세요',
-                    onTap: () => _navigateToScreen(const TrainingReportScreen()),
                   ),
                 ] else ...[
                   // Member features

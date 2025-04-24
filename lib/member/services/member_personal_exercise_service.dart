@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/env.dart';
 import '../../models/chat_message.dart';
@@ -20,6 +20,15 @@ class MemberPersonalExerciseService {
     final token = prefs.getString(_tokenKey);
     if (token == null || token.isEmpty) {
       throw Exception('회원 토큰이 없습니다. 다시 로그인해주세요.');
+    }
+    return token;
+  }
+
+  Future<String> getTokenForReport() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('TRAINER_TOKEN');
+    if (token == null || token.isEmpty) {
+      throw Exception('트레이너 토큰이 없습니다. 다시 로그인해주세요.');
     }
     return token;
   }
@@ -41,20 +50,15 @@ class MemberPersonalExerciseService {
     }
   }
 
-  Future<ChatMessage> sendMessage(
-    String message,
-    DateTime date,
-  ) async {
+  Future<ChatMessage> sendMessage(String message, DateTime date) async {
     try {
       final memberId = await getMemberId();
       final token = await getToken();
 
       if (kDebugMode) {
-        print('Request body: ${jsonEncode({
-          'message': message,
-          'memberId': memberId,
-          'date': date.toIso8601String(),
-        })}');
+        print(
+          'Request body: ${jsonEncode({'message': message, 'memberId': memberId, 'date': date.toIso8601String()})}',
+        );
       }
 
       final response = await http.post(
@@ -79,15 +83,9 @@ class MemberPersonalExerciseService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['error'] != null) {
-          return ChatMessage(
-            content: data['error'],
-            role: 'assistant',
-          );
+          return ChatMessage(content: data['error'], role: 'assistant');
         }
-        return ChatMessage(
-          content: data['finalResponse'],
-          role: 'assistant',
-        );
+        return ChatMessage(content: data['finalResponse'], role: 'assistant');
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
       } else {
@@ -118,7 +116,9 @@ class MemberPersonalExerciseService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/chat/workout_log?memberId=$memberId&date=${date.toIso8601String()}'),
+        Uri.parse(
+          '$baseUrl/api/chat/workout_log?memberId=$memberId&date=${date.toIso8601String()}',
+        ),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
@@ -132,10 +132,14 @@ class MemberPersonalExerciseService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => ChatMessage(
-          content: json['finalResponse'],
-          role: 'assistant',
-        )).toList();
+        return data
+            .map(
+              (json) => ChatMessage(
+                content: json['finalResponse'],
+                role: 'assistant',
+              ),
+            )
+            .toList();
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
       } else {
@@ -156,22 +160,31 @@ class MemberPersonalExerciseService {
     }
   }
 
-  Future<List<GroupedExerciseRecord>> getExerciseRecords(DateTime startTime, DateTime endTime) async {
+  Future<List<GroupedExerciseRecord>> getExerciseRecords(
+    DateTime startTime,
+    DateTime endTime,
+  ) async {
     try {
       final memberId = await getMemberId();
       final token = await getToken();
 
       if (kDebugMode) {
-        print('Fetching exercise records from: $baseUrl/api/exercise_records/grouped');
+        print(
+          'Fetching exercise records from: $baseUrl/api/exercise_records/grouped',
+        );
         print('Date range: ${startTime.toString()} to ${endTime.toString()}');
       }
 
       // 날짜 형식을 yyyy-MM-dd로 변환
-      final startDate = '${startTime.year}-${startTime.month.toString().padLeft(2, '0')}-${startTime.day.toString().padLeft(2, '0')}';
-      final endDate = '${endTime.year}-${endTime.month.toString().padLeft(2, '0')}-${endTime.day.toString().padLeft(2, '0')}';
+      final startDate =
+          '${startTime.year}-${startTime.month.toString().padLeft(2, '0')}-${startTime.day.toString().padLeft(2, '0')}';
+      final endDate =
+          '${endTime.year}-${endTime.month.toString().padLeft(2, '0')}-${endTime.day.toString().padLeft(2, '0')}';
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/exercise_records/grouped?memberId=$memberId&startTime=$startDate&endTime=$endDate'),
+        Uri.parse(
+          '$baseUrl/api/exercise_records/grouped?memberId=$memberId&startTime=$startDate&endTime=$endDate',
+        ),
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
@@ -185,7 +198,9 @@ class MemberPersonalExerciseService {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => GroupedExerciseRecord.fromJson(json)).toList();
+        return data
+            .map((json) => GroupedExerciseRecord.fromJson(json))
+            .toList();
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
       } else {
@@ -206,6 +221,56 @@ class MemberPersonalExerciseService {
     }
   }
 
+  Future<List<GroupedExerciseRecord>> getExerciseRecordsForReport(
+    int ptContractId,
+  ) async {
+    try {
+      final token = await getTokenForReport();
+
+      if (kDebugMode) {
+        print(
+          'Fetching exercise records from: $baseUrl/api/exercise_records/pt_contract/$ptContractId',
+        );
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/exercise_records/pt_contract/$ptContractId'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data
+            .map((json) => GroupedExerciseRecord.fromJson(json))
+            .toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '운동 기록 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error in getExerciseRecordsForReport: $e');
+        print('Stack trace: $stackTrace');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
   Future<ExerciseRecord> updateExerciseRecord({
     required int memberId,
     required int exerciseId,
@@ -215,7 +280,7 @@ class MemberPersonalExerciseService {
   }) async {
     try {
       final token = await getToken();
-      
+
       if (kDebugMode) {
         print('Updating exercise record...');
       }
@@ -263,4 +328,4 @@ class MemberPersonalExerciseService {
       throw Exception('Error: $e');
     }
   }
-} 
+}

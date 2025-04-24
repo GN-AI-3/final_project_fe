@@ -15,6 +15,7 @@ class PtLogExercise {
   final int weight;
   final int restTime;
   final String? feedback;
+  final DateTime? date;
 
   PtLogExercise({
     required this.exerciseName,
@@ -23,18 +24,30 @@ class PtLogExercise {
     required this.weight,
     required this.restTime,
     this.feedback,
+    this.date,
   });
 
-  factory PtLogExercise.fromJson(Map<String, dynamic> json) {
+  factory PtLogExercise.fromJson(Map<String, dynamic> json, {DateTime? date}) {
     return PtLogExercise(
-      exerciseName: json['exerciseName'] as String,
-      sets: json['sets'] as int,
-      reps: json['reps'] as int,
-      weight: json['weight'] as int,
-      restTime: json['restTime'] as int,
+      exerciseName: json['exerciseName'] as String? ?? '',
+      sets: json['sets'] as int? ?? 0,
+      reps: json['reps'] as int? ?? 0,
+      weight: json['weight'] as int? ?? 0,
+      restTime: json['restTime'] as int? ?? 0,
       feedback: json['feedback'] as String?,
+      date: date,
     );
   }
+}
+
+class GroupedPtLogExercise {
+  final DateTime date;
+  final List<PtLogExercise> exercises;
+
+  GroupedPtLogExercise({
+    required this.date,
+    required this.exercises,
+  });
 }
 
 class PtLogsService {
@@ -78,11 +91,6 @@ class PtLogsService {
         }),
       );
 
-      if (kDebugMode) {
-        print('Response status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-      }
-
       if (response.statusCode == 200) {
         return PtLog.fromJson(jsonDecode(response.body));
       } else if (response.statusCode == 401) {
@@ -122,11 +130,6 @@ class PtLogsService {
         },
       );
 
-      if (kDebugMode) {
-        print('Response status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
-      }
-
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => PtLogExercise.fromJson(json)).toList();
@@ -146,6 +149,58 @@ class PtLogsService {
         print('Error in getPtLogExercises: $e');
         print('Stack trace: $stackTrace');
       }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<List<GroupedPtLogExercise>> getPtLogExercisesForReport(int ptContractId) async {
+    try {
+      final token = await _getAuthToken();
+
+      if (token == null) {
+        throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/pt-log-exercises/pt-contract/$ptContractId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        if (kDebugMode) {
+          print('Parsed Data: $data');
+        }
+        
+        final List<GroupedPtLogExercise> groupedExercises = [];
+        for (var session in data) {
+          final date = DateTime.parse(session['startTime'] as String);
+          final exercises = (session['exercises'] as List<dynamic>)
+              .map((exercise) => PtLogExercise.fromJson(exercise, date: date))
+              .toList();
+          
+          groupedExercises.add(GroupedPtLogExercise(
+            date: date,
+            exercises: exercises,
+          ));
+        }
+        
+        groupedExercises.sort((a, b) => b.date.compareTo(a.date));
+        
+        return groupedExercises;
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? 'PT 일지 조회에 실패했습니다.');
+      }
+    } on SocketException {
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e) {
       throw Exception('Error: $e');
     }
   }

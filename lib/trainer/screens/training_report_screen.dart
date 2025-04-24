@@ -3,6 +3,7 @@
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../member/services/member_personal_exercise_service.dart';
@@ -25,7 +26,9 @@ class ReportData {
 }
 
 class TrainingReportScreen extends StatelessWidget {
-  const TrainingReportScreen({super.key});
+  final int ptContractId;
+
+  const TrainingReportScreen({super.key, required this.ptContractId});
 
   @override
   Widget build(BuildContext context) {
@@ -49,12 +52,12 @@ class TrainingReportScreen extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            ReportComparisonTab(ptContractId: 10),
-            ExerciseReportTab(),
-            DietReportTab(ptContractId: 10),
-            InbodyReportTab(ptContractId: 10),
+            ReportComparisonTab(ptContractId: ptContractId),
+            ExerciseReportTab(ptContractId: ptContractId),
+            DietReportTab(ptContractId: ptContractId),
+            InbodyReportTab(ptContractId: ptContractId),
           ],
         ),
       ),
@@ -115,7 +118,9 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
         _reports = reports;
         _isLoading = false;
       });
-      _controller.forward();
+      if (reports.isNotEmpty) {
+        _controller.forward();
+      }
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -149,8 +154,24 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
       );
     }
 
-    if (_reports == null || _reports!.length < 2) {
-      return const Center(child: Text('비교할 리포트가 충분하지 않습니다.'));
+    if (_reports == null || _reports!.isEmpty) {
+      return const Center(
+        child: Text(
+          '아직 트레이닝 리포트가 생성되지 않았습니다.\nPT 기록을 먼저 작성해주세요.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16),
+        ),
+      );
+    }
+
+    if (_reports!.length < 2) {
+      return const Center(
+        child: Text(
+          '비교할 리포트가 충분하지 않습니다.\n더 많은 PT 기록을 작성해주세요.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16),
+        ),
+      );
     }
 
     final currentReport = _reports![1];
@@ -382,6 +403,10 @@ class _ReportDetailSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (data == null) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -448,19 +473,19 @@ class _ReportDetailSection extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildSectionTitle('식단 평가 요약'),
                   Text(
-                    (data as DietReport).recentDietPattern ?? '데이터가 없습니다.',
+                    (data as DietReport).recentDietPattern ?? '데이터가 없습니다',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   _buildSectionTitle('식단 강점'),
                   Text(
-                    (data as DietReport).strengths ?? '데이터가 없습니다.',
+                    (data as DietReport).strengths ?? '데이터가 없습니다',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
                   _buildSectionTitle('개선 사항'),
                   Text(
-                    (data as DietReport).problems ?? '데이터가 없습니다.',
+                    (data as DietReport).problems ?? '데이터가 없습니다',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
@@ -472,7 +497,7 @@ class _ReportDetailSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      (data as DietReport).trainerMent ?? '데이터가 없습니다.',
+                      (data as DietReport).trainerMent ?? '데이터가 없습니다',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.blue,
@@ -624,7 +649,9 @@ class _LegendItem extends StatelessWidget {
 }
 
 class ExerciseReportTab extends StatefulWidget {
-  const ExerciseReportTab({super.key});
+  final int ptContractId;
+
+  const ExerciseReportTab({super.key, required this.ptContractId});
 
   @override
   State<ExerciseReportTab> createState() => _ExerciseReportTabState();
@@ -633,64 +660,45 @@ class ExerciseReportTab extends StatefulWidget {
 class _ExerciseReportTabState extends State<ExerciseReportTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _tabs = ['종합', '운동 추이', 'PT 비교', '운동 기록'];
+  final List<String> _tabs = ['종합', '운동 추이', '운동 기록'];
   final MemberPersonalExerciseService _personalExerciseService =
       MemberPersonalExerciseService();
+  final PtLogsService _ptLogsService = PtLogsService();
   List<GroupedExerciseRecord> _exerciseRecords = [];
-  final List<PtLogExercise> _ptLogExercises = [];
+  List<GroupedPtLogExercise> _ptLogExercises = [];
   bool _isLoading = true;
   String? _error;
-
-  // 주간 운동 데이터 계산
-  List<Map<String, dynamic>> get _weeklyData {
-    final now = DateTime.now();
-    final List<Map<String, dynamic>> data = [];
-
-    for (int i = 3; i >= 0; i--) {
-      final weekStart = now.subtract(Duration(days: i * 7));
-      final weekEnd = weekStart.add(const Duration(days: 6));
-
-      int count = 0;
-      for (var record in _exerciseRecords) {
-        final recordDate = DateTime.parse(record.date);
-        if (recordDate.isAfter(weekStart) && recordDate.isBefore(weekEnd)) {
-          count++;
-        }
-      }
-
-      data.add({'week': '${i + 1}주차', 'count': count});
-    }
-
-    return data;
-  }
-
-  // 주요 운동 데이터 계산
-  List<Map<String, dynamic>> get _exerciseData {
-    final Map<String, List<int>> exerciseWeights = {};
-
-    for (var record in _exerciseRecords) {
-      for (var exercise in record.records) {
-        final weight = exercise.recordData['weight'] as int? ?? 0;
-        if (!exerciseWeights.containsKey(exercise.exerciseName)) {
-          exerciseWeights[exercise.exerciseName] = [];
-        }
-        exerciseWeights[exercise.exerciseName]!.add(weight);
-      }
-    }
-
-    return exerciseWeights.entries.map((entry) {
-      final weights = entry.value;
-      final maxWeight =
-          weights.isEmpty ? 0 : weights.reduce((a, b) => a > b ? a : b);
-      return {'exercise': entry.key, 'weight': maxWeight};
-    }).toList();
-  }
+  String? _selectedDate;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
     _loadExerciseRecords();
+    _loadPtLogExercises();
+  }
+
+  void _selectDateAndSwitchTab(String date) {
+    setState(() {
+      _selectedDate = date;
+    });
+    _tabController.animateTo(2);
+
+    Future.delayed(const Duration(milliseconds: 100), () {
+      final context = this.context;
+      if (!context.mounted) return;
+
+      final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+      if (renderBox != null) {
+        final position = renderBox.localToGlobal(Offset.zero);
+        final scrollController = PrimaryScrollController.of(context);
+        scrollController.animateTo(
+          position.dy + 155,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   Future<void> _loadExerciseRecords() async {
@@ -700,24 +708,40 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         _error = null;
       });
 
-      // 최근 1개월간의 운동 기록 가져오기
-      final endTime = DateTime.now();
-      final startTime = endTime.subtract(const Duration(days: 30));
+      final records = await _personalExerciseService
+          .getExerciseRecordsForReport(widget.ptContractId);
 
-      final records = await _personalExerciseService.getExerciseRecords(
-        startTime,
-        endTime,
-      );
+      // 날짜 기준 내림차순 정렬
+      records.sort((a, b) => b.date.compareTo(a.date));
 
       setState(() {
         _exerciseRecords = records;
         _isLoading = false;
       });
     } catch (e) {
+      if (kDebugMode) {
+        print('개인 운동 기록 로드 중 오류 발생: $e');
+      }
       setState(() {
         _error = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadPtLogExercises() async {
+    try {
+      final exercises = await _ptLogsService.getPtLogExercisesForReport(
+        widget.ptContractId,
+      );
+
+      setState(() {
+        _ptLogExercises = exercises;
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('PT 운동 기록 로드 중 오류 발생: $e');
+      }
     }
   }
 
@@ -737,6 +761,8 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           labelColor: Colors.blue,
           unselectedLabelColor: Colors.grey,
           indicatorColor: Colors.blue,
+          dividerColor: Colors.grey[300],
+          dividerHeight: 1.0,
         ),
         Expanded(
           child: TabBarView(
@@ -744,7 +770,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
             children: [
               _buildSummaryTab(),
               _buildExerciseTrendTab(),
-              _buildPTComparisonTab(),
               _buildExerciseLogTab(),
             ],
           ),
@@ -754,6 +779,26 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
   }
 
   Widget _buildSummaryTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('오류가 발생했습니다: $_error'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadExerciseRecords,
+              child: const Text('다시 시도'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -761,11 +806,346 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         children: [
           const Text(
             '운동 성과 요약',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 24),
+          _buildSummaryCards(),
+          const SizedBox(height: 24),
+          const Text(
+            '최근 운동',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          _buildSummaryCard(),
+          _buildRecentStats(),
+          const SizedBox(height: 24),
+          const Text(
+            '주요 운동 TOP 3',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          _buildTopExercises(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCards() {
+    final totalExercises = _exerciseRecords.fold<int>(
+      0,
+      (sum, record) => sum + record.records.length,
+    );
+
+    final totalPtExercises = _ptLogExercises.fold<int>(
+      0,
+      (sum, record) => sum + record.exercises.length,
+    );
+
+    final uniqueExercises =
+        _exerciseRecords
+            .expand((record) => record.records)
+            .map((exercise) => exercise.exerciseName)
+            .toSet()
+            .length;
+
+    final uniquePtExercises =
+        _ptLogExercises
+            .expand((record) => record.exercises)
+            .map((exercise) => exercise.exerciseName)
+            .toSet()
+            .length;
+
+    final totalWeight = _exerciseRecords.fold<double>(
+      0,
+      (sum, record) =>
+          sum +
+          record.records.fold<double>(
+            0,
+            (exerciseSum, exercise) =>
+                exerciseSum + (exercise.recordData['weight'] as int? ?? 0),
+          ),
+    );
+
+    final totalPtWeight = _ptLogExercises.fold<double>(
+      0,
+      (sum, record) =>
+          sum +
+          record.exercises.fold<double>(
+            0,
+            (exerciseSum, exercise) => exerciseSum + (exercise.weight),
+          ),
+    );
+
+    return Column(
+      children: [
+        const Text(
+          '개인 운동 통계',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.8,
+          children: [
+            _buildSummaryCard(
+              '총 운동 횟수',
+              '${_exerciseRecords.length}회',
+              Icons.calendar_today,
+              Colors.blue,
+            ),
+            _buildSummaryCard(
+              '누적 세트',
+              '$totalExercises세트',
+              Icons.fitness_center,
+              Colors.green,
+            ),
+            _buildSummaryCard(
+              '운동 종류',
+              '$uniqueExercises종류',
+              Icons.category,
+              Colors.orange,
+            ),
+            _buildSummaryCard(
+              '누적 중량',
+              '${totalWeight.toStringAsFixed(1)}kg',
+              Icons.monitor_weight,
+              Colors.purple,
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'PT 운동 통계',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.green,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.8,
+          children: [
+            _buildSummaryCard(
+              'PT 횟수',
+              '${_ptLogExercises.length}회',
+              Icons.calendar_today,
+              Colors.blue,
+            ),
+            _buildSummaryCard(
+              '누적 세트',
+              '$totalPtExercises세트',
+              Icons.fitness_center,
+              Colors.green,
+            ),
+            _buildSummaryCard(
+              '운동 종류',
+              '$uniquePtExercises종류',
+              Icons.category,
+              Colors.orange,
+            ),
+            _buildSummaryCard(
+              '누적 중량',
+              '${totalPtWeight.toStringAsFixed(1)}kg',
+              Icons.monitor_weight,
+              Colors.purple,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentStats() {
+    if (_exerciseRecords.isEmpty) {
+      return const Center(child: Text('최근 운동 기록이 없습니다.'));
+    }
+
+    final recentRecords = _exerciseRecords.take(5).toList();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children:
+              recentRecords.map((record) {
+                final date = DateTime.parse(record.date);
+                return InkWell(
+                  onTap: () => _selectDateAndSwitchTab(record.date),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${record.records.length}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${date.year}년 ${date.month}월 ${date.day}일',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${record.records.length}개의 운동',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: Colors.grey[400]),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopExercises() {
+    final exerciseCounts = <String, int>{};
+    for (var record in _exerciseRecords) {
+      for (var exercise in record.records) {
+        exerciseCounts[exercise.exerciseName] =
+            (exerciseCounts[exercise.exerciseName] ?? 0) + 1;
+      }
+    }
+
+    final sortedExercises =
+        exerciseCounts.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+    if (sortedExercises.isEmpty) {
+      return const Center(child: Text('운동 기록이 없습니다.'));
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children:
+              sortedExercises.take(3).map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${sortedExercises.indexOf(entry) + 1}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          entry.key,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${entry.value}회',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+        ),
       ),
     );
   }
@@ -789,23 +1169,14 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           ),
           const SizedBox(height: 16),
           _buildExerciseComparisonChart(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPTComparisonTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+          const SizedBox(height: 32),
           const Text(
-            'PT 수업과 자율 훈련 비교',
+            '운동 종류 분포',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 32),
-          _buildPTComparisonChart(),
+          _buildExerciseTypeDistribution(),
+          const SizedBox(height: 40),
         ],
       ),
     );
@@ -845,10 +1216,107 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           if (_exerciseRecords.isEmpty && _ptLogExercises.isEmpty)
             const Center(child: Text('최근 30일간의 운동 기록이 없습니다.'))
           else ...[
+            if (_ptLogExercises.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey[200]!, width: 1.0),
+                  ),
+                ),
+                child: const Text(
+                  'PT 운동 기록',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _ptLogExercises.length,
+                itemBuilder: (context, index) {
+                  final groupedExercise = _ptLogExercises[index];
+                  return ExpansionTile(
+                    initiallyExpanded: false,
+                    title: Text(
+                      '${groupedExercise.date.year}년 ${groupedExercise.date.month}월 ${groupedExercise.date.day}일',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    children:
+                        groupedExercise.exercises.map((exercise) {
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    exercise.exerciseName,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceAround,
+                                    children: [
+                                      _buildExerciseDetail(
+                                        '무게',
+                                        '${exercise.weight}kg',
+                                      ),
+                                      _buildExerciseDetail(
+                                        '횟수',
+                                        exercise.reps.toString(),
+                                      ),
+                                      _buildExerciseDetail(
+                                        '세트',
+                                        exercise.sets.toString(),
+                                      ),
+                                      _buildExerciseDetail(
+                                        '휴식',
+                                        '${exercise.restTime}초',
+                                      ),
+                                    ],
+                                  ),
+                                  if (exercise.feedback?.isNotEmpty ??
+                                      false) ...[
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      '피드백:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(exercise.feedback ?? ''),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                  );
+                },
+              ),
+            ],
             if (_exerciseRecords.isNotEmpty) ...[
-              const Text(
-                '개인 운동 기록',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey[200]!, width: 1.0),
+                  ),
+                ),
+                child: const Text(
+                  '개인 운동 기록',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
               const SizedBox(height: 8),
               ListView.builder(
@@ -859,90 +1327,75 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                   final record = _exerciseRecords[index];
                   final date = DateTime.parse(record.date);
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            '${date.year}년 ${date.month}월 ${date.day}일',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        ...record.records
+                  return ExpansionTile(
+                    initiallyExpanded: _selectedDate == record.date,
+                    title: Text(
+                      '${date.year}년 ${date.month}월 ${date.day}일',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    children:
+                        record.records
                             .map(
-                              (exercise) => ListTile(
-                                title: Text(exercise.exerciseName),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    ...exercise.translatedRecordData.entries
-                                        .map(
-                                          (entry) => Text(
-                                            '${entry.key}: ${entry.value}',
-                                          ),
-                                        ),
-                                    if (exercise.memoData['memo'] != null) ...[
-                                      const SizedBox(height: 4),
+                              (exercise) => Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        '메모: ${exercise.memoData['memo']}',
+                                        exercise.exerciseName,
                                         style: const TextStyle(
-                                          fontStyle: FontStyle.italic,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
                                         ),
                                       ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceAround,
+                                        children: [
+                                          _buildExerciseDetail(
+                                            '무게',
+                                            '${exercise.recordData['weight'] ?? 0}kg',
+                                          ),
+                                          _buildExerciseDetail(
+                                            '횟수',
+                                            exercise.recordData['reps']
+                                                    ?.toString() ??
+                                                '0',
+                                          ),
+                                          _buildExerciseDetail(
+                                            '세트',
+                                            exercise.recordData['sets']
+                                                    ?.toString() ??
+                                                '0',
+                                          ),
+                                        ],
+                                      ),
+                                      if (exercise
+                                              .memoData['memo']
+                                              ?.isNotEmpty ??
+                                          false) ...[
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          '메모:',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(exercise.memoData['memo'] ?? ''),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
                             )
                             .toList(),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-            if (_ptLogExercises.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              const Text(
-                'PT 운동 기록',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _ptLogExercises.length,
-                itemBuilder: (context, index) {
-                  final exercise = _ptLogExercises[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: ListTile(
-                      title: Text(exercise.exerciseName),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('세트: ${exercise.sets}'),
-                          Text('횟수: ${exercise.reps}'),
-                          Text('무게: ${exercise.weight}kg'),
-                          Text('휴식 시간: ${exercise.restTime}초'),
-                          if (exercise.feedback != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              '피드백: ${exercise.feedback}',
-                              style: const TextStyle(
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
                   );
                 },
               ),
@@ -953,26 +1406,94 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     );
   }
 
+  Widget _buildExerciseDetail(String label, String value) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+
   Widget _buildWeeklyTrendChart() {
-    return SizedBox(
-      height: 200,
+    return Container(
+      height: 250,
+      padding: const EdgeInsets.all(16),
       child: LineChart(
         LineChartData(
-          gridData: const FlGridData(show: true),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: true,
+            horizontalInterval: 1,
+            verticalInterval: 1,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: Colors.grey.withOpacity(0.3),
+                strokeWidth: 1,
+              );
+            },
+            getDrawingVerticalLine: (value) {
+              return FlLine(
+                color: Colors.grey.withOpacity(0.3),
+                strokeWidth: 1,
+              );
+            },
+          ),
           titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: true),
+            show: true,
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
             ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                reservedSize: 30,
+                interval: 1,
                 getTitlesWidget: (value, meta) {
-                  return Text(_weeklyData[value.toInt()]['week'] as String);
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      _weeklyData[value.toInt()]['week'] as String,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  );
                 },
               ),
             ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  );
+                },
+                reservedSize: 35,
+              ),
+            ),
           ),
-          borderData: FlBorderData(show: true),
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.grey.withOpacity(0.3)),
+          ),
+          minX: 0,
+          maxX: (_weeklyData.length - 1).toDouble(),
+          minY: 0,
+          maxY:
+              _weeklyData.fold<double>(
+                0,
+                (max, item) => math.max(max, (item['count'] as int).toDouble()),
+              ) +
+              1,
           lineBarsData: [
             LineChartBarData(
               spots:
@@ -985,7 +1506,22 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
               isCurved: true,
               color: Colors.blue,
               barWidth: 3,
-              dotData: const FlDotData(show: true),
+              isStrokeCapRound: true,
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) {
+                  return FlDotCirclePainter(
+                    radius: 4,
+                    color: Colors.white,
+                    strokeWidth: 2,
+                    strokeColor: Colors.blue,
+                  );
+                },
+              ),
+              belowBarData: BarAreaData(
+                show: true,
+                color: Colors.blue.withOpacity(0.1),
+              ),
             ),
           ],
         ),
@@ -998,123 +1534,378 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       return const Center(child: Text('운동 기록이 없습니다.'));
     }
 
-    return SizedBox(
-      height: 200,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY:
-              _exerciseData.fold<double>(
-                0,
-                (max, item) =>
-                    math.max(max, (item['weight'] as int).toDouble()),
-              ) *
-              1.2,
-          barGroups:
-              _exerciseData.asMap().entries.map((entry) {
-                return BarChartGroupData(
-                  x: entry.key,
-                  barRods: [
-                    BarChartRodData(
-                      toY: (entry.value['weight'] as int).toDouble(),
-                      color: Colors.blue,
-                      width: 20,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(4),
-                      ),
-                    ),
-                  ],
-                );
-              }).toList(),
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    _exerciseData[value.toInt()]['exercise'] as String,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 250,
+          padding: const EdgeInsets.only(
+            top: 16,
+            left: 0,
+            right: 24,
+            bottom: 0,
+          ),
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: _getMaxWeight() + 10,
+              barGroups:
+                  _exerciseData.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final data = entry.value;
+                    final colors = [
+                      Colors.blue,
+                      Colors.red,
+                      Colors.green,
+                      Colors.orange,
+                      Colors.purple,
+                    ];
+                    final color = colors[index % colors.length];
+
+                    return BarChartGroupData(
+                      x: index,
+                      barRods: [
+                        BarChartRodData(
+                          toY: data['initialWeight'],
+                          color: color.withOpacity(0.5),
+                          width: 20,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                        ),
+                        BarChartRodData(
+                          toY: data['recentWeight'],
+                          color: color,
+                          width: 20,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(4),
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: 10,
+                getDrawingHorizontalLine: (value) {
+                  return FlLine(
+                    color: Colors.grey.withOpacity(0.3),
+                    strokeWidth: 1,
                   );
                 },
               ),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 40,
+                    getTitlesWidget: (value, meta) {
+                      final exercise =
+                          _exerciseData[value.toInt()]['exercise'] as String;
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          exercise,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPTComparisonChart() {
-    return SizedBox(
-      height: 200,
-      child: PieChart(
-        PieChartData(
-          sections: [
-            PieChartSectionData(
-              value: 60,
-              title: 'PT 수업\n60%',
-              color: Colors.blue,
-              radius: 100,
-              titleStyle: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            PieChartSectionData(
-              value: 40,
-              title: '자율 훈련\n40%',
-              color: Colors.green,
-              radius: 100,
-              titleStyle: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildSummaryItem('주간 운동 횟수', '4회'),
-            _buildSummaryItem('평균 운동 시간', '1시간 30분'),
-            _buildSummaryItem('주요 운동', '벤치프레스, 데드리프트, 스쿼트'),
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('초기 기록 (${_formatDate(_exerciseData.first['initialDate'])})'),
+            const SizedBox(width: 16),
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('최근 기록 (${_formatDate(_exerciseData.first['recentDate'])})'),
           ],
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children:
+                  _exerciseData.map((data) {
+                    final improvement = _formatImprovement(
+                      data['initialWeight'] as double,
+                      data['recentWeight'] as double,
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        '${data['exercise']}: $improvement',
+                        style: TextStyle(
+                          color:
+                              improvement.contains('증가')
+                                  ? Colors.green
+                                  : improvement.contains('감소')
+                                  ? Colors.red
+                                  : Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  double _getMaxWeight() {
+    double maxWeight = 0;
+    for (var data in _exerciseData) {
+      maxWeight = math.max(maxWeight, data['initialWeight']);
+      maxWeight = math.max(maxWeight, data['recentWeight']);
+    }
+    return maxWeight;
+  }
+
+  List<Map<String, dynamic>> get _exerciseData {
+    final Map<String, List<Map<String, dynamic>>> exerciseRecords = {};
+
+    // 모든 운동 기록 수집
+    for (var record in _exerciseRecords) {
+      final recordDate = DateTime.parse(record.date);
+      for (var exercise in record.records) {
+        final weight = (exercise.recordData['weight'] as int? ?? 0).toDouble();
+        if (!exerciseRecords.containsKey(exercise.exerciseName)) {
+          exerciseRecords[exercise.exerciseName] = [];
+        }
+        exerciseRecords[exercise.exerciseName]!.add({
+          'weight': weight,
+          'date': recordDate,
+        });
+      }
+    }
+
+    // 각 운동별로 최초/최근 기록 찾기
+    final List<Map<String, dynamic>> result = [];
+    for (var entry in exerciseRecords.entries) {
+      final records = entry.value;
+      if (records.length < 2) continue; // 최소 2개 이상의 기록이 있는 운동만 포함
+
+      records.sort(
+        (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
+      );
+
+      result.add({
+        'exercise': entry.key,
+        'initialWeight': records.first['weight'],
+        'recentWeight': records.last['weight'],
+        'initialDate': records.first['date'],
+        'recentDate': records.last['date'],
+      });
+    }
+
+    // 최근 무게 기준으로 상위 5개 운동 선택
+    result.sort(
+      (a, b) =>
+          (b['recentWeight'] as double).compareTo(a['recentWeight'] as double),
+    );
+    return result.take(5).toList();
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.year}년 ${date.month}월 ${date.day}일';
+  }
+
+  String _formatImprovement(double initialWeight, double recentWeight) {
+    final improvement = ((recentWeight - initialWeight) / initialWeight * 100);
+    if (improvement > 0) {
+      return '초기 대비 ${improvement.toStringAsFixed(1)}% 증가했습니다.';
+    } else if (improvement < 0) {
+      return '초기 대비 ${improvement.abs().toStringAsFixed(1)}% 감소했습니다.';
+    } else {
+      return '초기 무게를 유지하고 있습니다.';
+    }
+  }
+
+  Widget _buildExerciseTypeDistribution() {
+    final exerciseTypes = <String, int>{};
+    for (var record in _exerciseRecords) {
+      for (var exercise in record.records) {
+        exerciseTypes[exercise.exerciseName] =
+            (exerciseTypes[exercise.exerciseName] ?? 0) + 1;
+      }
+    }
+
+    // 더 선명한 색상 팔레트 정의
+    final colors = [
+      const Color(0xFF2196F3), // 파랑
+      const Color(0xFF4CAF50), // 초록
+      const Color(0xFFFFC107), // 노랑
+      const Color(0xFFE91E63), // 분홍
+      const Color(0xFF9C27B0), // 보라
+      const Color(0xFF00BCD4), // 하늘
+      const Color(0xFFFF5722), // 주황
+      const Color(0xFF795548), // 갈색
+    ];
+
+    final total = exerciseTypes.values.fold<int>(
+      0,
+      (sum, count) => sum + count,
+    );
+    final sections =
+        exerciseTypes.entries.map((entry) {
+          final percentage = (entry.value / total * 100).round();
+          final colorIndex =
+              exerciseTypes.keys.toList().indexOf(entry.key) % colors.length;
+          return PieChartSectionData(
+            value: entry.value.toDouble(),
+            title: '$percentage%',
+            color: colors[colorIndex],
+            radius: 60,
+            titleStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          );
+        }).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 150,
+                height: 150,
+                child: PieChart(
+                  PieChartData(
+                    sections: sections,
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 30,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 40),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children:
+                      exerciseTypes.entries.map((entry) {
+                        final index = exerciseTypes.keys.toList().indexOf(
+                          entry.key,
+                        );
+                        final percentage = (entry.value / total * 100).round();
+                        final color = colors[index % colors.length];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: color, width: 1.5),
+                            ),
+                            child: Text(
+                              '${entry.key} ($percentage%)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: color,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSummaryItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
+  // 주간 운동 데이터 계산
+  List<Map<String, dynamic>> get _weeklyData {
+    final now = DateTime.now();
+    final List<Map<String, dynamic>> data = [];
+
+    for (int i = 3; i >= 0; i--) {
+      final weekStart = now.subtract(Duration(days: i * 7));
+      final weekEnd = weekStart.add(const Duration(days: 6));
+
+      int count = 0;
+      for (var record in _exerciseRecords) {
+        final recordDate = DateTime.parse(record.date);
+        if (recordDate.isAfter(weekStart) && recordDate.isBefore(weekEnd)) {
+          count++;
+        }
+      }
+
+      data.add({'week': '${i + 1}주차', 'count': count});
+    }
+
+    return data;
   }
 }
 
 class DietReportTab extends StatefulWidget {
   final int ptContractId;
-  
-  const DietReportTab({
-    super.key,
-    required this.ptContractId,
-  });
+
+  const DietReportTab({super.key, required this.ptContractId});
 
   @override
   State<DietReportTab> createState() => _DietReportTabState();
@@ -1169,19 +1960,14 @@ class _DietReportTabState extends State<DietReportTab>
           children: [
             Text('오류가 발생했습니다: $_error'),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadReport,
-              child: const Text('다시 시도'),
-            ),
+            ElevatedButton(onPressed: _loadReport, child: const Text('다시 시도')),
           ],
         ),
       );
     }
 
     if (_currentReport == null) {
-      return const Center(
-        child: Text('식단 리포트가 없습니다.'),
-      );
+      return const Center(child: Text('식단 리포트가 없습니다.'));
     }
 
     return Column(
@@ -1192,6 +1978,8 @@ class _DietReportTabState extends State<DietReportTab>
           labelColor: Colors.blue,
           unselectedLabelColor: Colors.grey,
           indicatorColor: Colors.blue,
+          dividerColor: Colors.grey[300],
+          dividerHeight: 1.0,
         ),
         Expanded(
           child: TabBarView(

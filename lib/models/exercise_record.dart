@@ -18,8 +18,14 @@ class ExerciseRecord {
       return ExerciseRecord(
         exerciseId: json['exerciseId'] as int,
         exerciseName: json['exerciseName'] as String,
-        recordData: (json['recordData'] as Map<String, dynamic>?) ?? {},
-        memoData: (json['memoData'] as Map<String, dynamic>?) ?? {},
+        recordData: {
+          'reps': json['reps'],
+          'sets': json['sets'],
+          'weight': json['weight'],
+        },
+        memoData: {
+          'memo': json['memo'],
+        },
       );
     } catch (e) {
       if (kDebugMode) {
@@ -72,7 +78,7 @@ class GroupedExerciseRecord {
     try {
       return GroupedExerciseRecord(
         date: json['date'] as String,
-        records: (json['records'] as List<dynamic>?)
+        records: (json['exercises'] as List<dynamic>?)
                 ?.map((e) => ExerciseRecord.fromJson(e as Map<String, dynamic>))
                 .toList() ??
             [],
