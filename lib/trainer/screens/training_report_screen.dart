@@ -664,7 +664,7 @@ class ExerciseReportTab extends StatefulWidget {
 class _ExerciseReportTabState extends State<ExerciseReportTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _tabs = ['종합', '성과 분석', '운동 기록'];
+  final List<String> _tabs = ['종합', '운동 패턴 분석', '운동 기록'];
   final MemberPersonalExerciseService _personalExerciseService =
       MemberPersonalExerciseService();
   final PtLogsService _ptLogsService = PtLogsService();
@@ -1161,13 +1161,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '주간 성적',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          _buildWeeklyTrendChart(),
-          const SizedBox(height: 32),
-          const Text(
             'Top 3 운동 기록 비교',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
@@ -1180,7 +1173,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           ),
           const SizedBox(height: 32),
           _buildExerciseTypeDistribution(),
-          const SizedBox(height: 40),
         ],
       ),
     );
@@ -1420,116 +1412,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ],
-    );
-  }
-
-  Widget _buildWeeklyTrendChart() {
-    if (_weeklyData.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            '아직 운동 기록이 없습니다.\n운동 기록을 추가하면 주간 추이를 확인할 수 있습니다.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final weekData = _weeklyData.first;
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildScoreCard(
-                '출석률',
-                weekData['attendanceRate'] as double,
-                '${weekData['exerciseDays']}일 / 5일',
-                Colors.blue,
-              ),
-              const SizedBox(height: 12),
-              _buildScoreCard(
-                '운동 다양성',
-                weekData['diversityScore'] as double,
-                '${weekData['uniqueExercises']}종류',
-                Colors.green,
-              ),
-              const SizedBox(height: 12),
-              _buildScoreCard(
-                '운동 강도',
-                weekData['intensityScore'] as double,
-                '중량/세트/횟수 기준',
-                Colors.orange,
-              ),
-              const SizedBox(height: 12),
-              _buildScoreCard(
-                '종합 점수',
-                weekData['totalScore'] as double,
-                '출석률 40% + 다양성 30% + 강도 30%',
-                Colors.purple,
-                isTotal: true,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildScoreCard(String title, double score, String detail, Color color, {bool isTotal = false}) {
-    return Card(
-      elevation: isTotal ? 4 : 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: isTotal ? 18 : 16,
-                    fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
-                    color: isTotal ? color : Colors.black87,
-                  ),
-                ),
-                Text(
-                  '${score.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    fontSize: isTotal ? 20 : 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: score / 100,
-              backgroundColor: color.withOpacity(0.1),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 8,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              detail,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1892,64 +1774,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         ),
       ),
     );
-  }
-
-  // 주간 운동 데이터 계산
-  List<Map<String, dynamic>> get _weeklyData {
-    final now = DateTime.now();
-    final List<Map<String, dynamic>> data = [];
-
-    // 지난 주의 시작일과 종료일 계산
-    final lastWeekStart = now.subtract(const Duration(days: 7));
-    final lastWeekEnd = now.subtract(const Duration(days: 1));
-
-    // 해당 주의 운동 기록 수집
-    final weekRecords = _exerciseRecords.where((record) {
-      final recordDate = DateTime.parse(record.date);
-      return recordDate.isAfter(lastWeekStart) && recordDate.isBefore(lastWeekEnd);
-    }).toList();
-
-    // 출석률 계산 (목표 운동일 수 대비 실제 운동일 수)
-    const targetDays = 5; // 주 5일 운동을 목표로 설정
-    final actualDays = weekRecords.length;
-    final attendanceRate = (actualDays / targetDays) * 100;
-
-    // 운동 다양성 점수 계산
-    final uniqueExercises = weekRecords
-        .expand((record) => record.records)
-        .map((exercise) => exercise.exerciseName)
-        .toSet()
-        .length;
-    final diversityScore = (uniqueExercises / 5) * 100; // 5종류 이상 운동을 목표로 설정
-
-    // 운동 강도 점수 계산
-    double intensityScore = 0;
-    for (var record in weekRecords) {
-      for (var exercise in record.records) {
-        final weight = (exercise.recordData['weight'] as int? ?? 0).toDouble();
-        final sets = exercise.recordData['sets'] as int? ?? 0;
-        final reps = exercise.recordData['reps'] as int? ?? 0;
-        
-        // 운동 강도 점수 = (중량 * 세트 * 횟수) / 100
-        intensityScore += (weight * sets * reps) / 100;
-      }
-    }
-    intensityScore = math.min(intensityScore, 100); // 최대 100점으로 제한
-
-    // 종합 점수 계산 (출석률 40%, 다양성 30%, 강도 30%)
-    final totalScore = (attendanceRate * 0.4) + (diversityScore * 0.3) + (intensityScore * 0.3);
-
-    data.add({
-      'week': '지난 주',
-      'attendanceRate': attendanceRate,
-      'diversityScore': diversityScore,
-      'intensityScore': intensityScore,
-      'totalScore': totalScore,
-      'exerciseDays': actualDays,
-      'uniqueExercises': uniqueExercises,
-    });
-
-    return data;
   }
 }
 
