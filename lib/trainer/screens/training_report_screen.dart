@@ -1164,15 +1164,16 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
             'Top 3 운동 기록 비교',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           _buildExerciseComparisonChart(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           const Text(
             '운동 종류 분포',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 32),
           _buildExerciseTypeDistribution(),
+          const SizedBox(height: 16),
         ],
       ),
     );
