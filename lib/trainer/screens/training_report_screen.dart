@@ -810,23 +810,23 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         children: [
           const Text(
             '운동 통계',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           _buildSummaryCards(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           const Text(
             '최근 운동',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           _buildRecentStats(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           const Text(
             '주요 운동 TOP 3',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           _buildTopExercises(),
         ],
       ),
@@ -890,39 +890,64 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           ),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.8,
-          children: [
-            _buildSummaryCard(
-              '총 운동 횟수',
-              '${_exerciseRecords.length}회',
-              Icons.calendar_today,
-              Colors.blue,
-            ),
-            _buildSummaryCard(
-              '누적 세트',
-              '$totalExercises세트',
-              Icons.fitness_center,
-              Colors.green,
-            ),
-            _buildSummaryCard(
-              '운동 종류',
-              '$uniqueExercises종류',
-              Icons.category,
-              Colors.orange,
-            ),
-            _buildSummaryCard(
-              '누적 중량',
-              '${totalWeight.toStringAsFixed(1)}kg',
-              Icons.monitor_weight,
-              Colors.purple,
-            ),
-          ],
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 4,
+                offset: const Offset(2, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '총 운동 횟수',
+                      '${_exerciseRecords.length}회',
+                      Icons.calendar_today,
+                      Colors.blue,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '누적 세트',
+                      '$totalExercises세트',
+                      Icons.fitness_center,
+                      Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '운동 종류',
+                      '$uniqueExercises종류',
+                      Icons.category,
+                      Colors.orange,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '누적 중량',
+                      '${totalWeight.toStringAsFixed(1)}kg',
+                      Icons.monitor_weight,
+                      Colors.purple,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
         const Text(
@@ -934,39 +959,64 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           ),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.8,
-          children: [
-            _buildSummaryCard(
-              'PT 횟수',
-              '${_ptLogExercises.length}회',
-              Icons.calendar_today,
-              Colors.blue,
-            ),
-            _buildSummaryCard(
-              '누적 세트',
-              '$totalPtExercises세트',
-              Icons.fitness_center,
-              Colors.green,
-            ),
-            _buildSummaryCard(
-              '운동 종류',
-              '$uniquePtExercises종류',
-              Icons.category,
-              Colors.orange,
-            ),
-            _buildSummaryCard(
-              '누적 중량',
-              '${totalPtWeight.toStringAsFixed(1)}kg',
-              Icons.monitor_weight,
-              Colors.purple,
-            ),
-          ],
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.2),
+                spreadRadius: 1,
+                blurRadius: 4,
+                offset: const Offset(2, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryCard(
+                      'PT 횟수',
+                      '${_ptLogExercises.length}회',
+                      Icons.calendar_today,
+                      Colors.blue,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '누적 세트',
+                      '$totalPtExercises세트',
+                      Icons.fitness_center,
+                      Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '운동 종류',
+                      '$uniquePtExercises종류',
+                      Icons.category,
+                      Colors.orange,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      '누적 중량',
+                      '${totalPtWeight.toStringAsFixed(1)}kg',
+                      Icons.monitor_weight,
+                      Colors.purple,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -978,36 +1028,33 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     IconData icon,
     Color color,
   ) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -1022,62 +1069,67 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children:
-              recentRecords.map((record) {
-                final date = DateTime.parse(record.date);
-                return InkWell(
-                  onTap: () => _selectDateAndSwitchTab(record.date),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${record.records.length}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
-                              ),
+          children: [
+            ...recentRecords.asMap().entries.map((entry) {
+              final index = entry.key;
+              final record = entry.value;
+              final date = DateTime.parse(record.date);
+              return InkWell(
+                onTap: () => _selectDateAndSwitchTab(record.date),
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index == recentRecords.length - 1 ? 0 : 12,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${record.records.length}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${date.year}년 ${date.month}월 ${date.day}일',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${date.year}년 ${date.month}월 ${date.day}일',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${record.records.length}개의 운동',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${record.records.length}개의 운동',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        Icon(Icons.chevron_right, color: Colors.grey[400]),
-                      ],
-                    ),
+                      ),
+                      Icon(Icons.chevron_right, color: Colors.grey[400]),
+                    ],
                   ),
-                );
-              }).toList(),
+                ),
+              );
+            }).toList(),
+          ],
         ),
       ),
     );
@@ -1100,55 +1152,57 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       return const Center(child: Text('운동 기록이 없습니다.'));
     }
 
+    final top3Exercises = sortedExercises.take(3).toList();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children:
-              sortedExercises.take(3).map((entry) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${sortedExercises.indexOf(entry) + 1}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ),
+          children: [
+            ...top3Exercises.asMap().entries.map((entry) {
+              final index = entry.key;
+              final exercise = entry.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: index == 2 ? 0 : 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
+                      child: Center(
                         child: Text(
-                          entry.key,
+                          '${index + 1}',
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
                           ),
                         ),
                       ),
-                      Text(
-                        '${entry.value}회',
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        exercise.key,
                         style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    ),
+                    Text(
+                      '${exercise.value}회',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
         ),
       ),
     );
