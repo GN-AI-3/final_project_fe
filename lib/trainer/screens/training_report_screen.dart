@@ -40,15 +40,16 @@ class TrainingReportScreen extends StatelessWidget {
           backgroundColor: const Color(0xfff0f0f0),
           foregroundColor: Colors.black87,
           elevation: 0,
-          bottom: const TabBar(
-            labelColor: Colors.black,
+          bottom: TabBar(
+            labelColor: Colors.blue,
             unselectedLabelColor: Colors.grey,
             indicatorColor: Colors.blue,
-            tabs: [
-              Tab(text: '개요'),
-              Tab(text: '운동'),
-              Tab(text: '식단'),
-              Tab(text: '인바디'),
+            dividerColor: Colors.grey[400],
+            tabs: const [
+              Tab(text: '     개요     '),
+              Tab(text: '     운동     '),
+              Tab(text: '     식단     '),
+              Tab(text: '    인바디    '),
             ],
           ),
         ),
@@ -371,23 +372,44 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
           ),
           const SizedBox(height: 32),
           _ReportDetailSection(
-            title: '운동 리포트',
+            title: Text(
+              '운동 리포트',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             data:
                 _showCurrentData
                     ? currentReport.exerciseReport
                     : previousReport.exerciseReport,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           _ReportDetailSection(
-            title: '식단 리포트',
+            title: Text(
+              '식단 리포트',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             data:
                 _showCurrentData
                     ? currentReport.dietReport
                     : previousReport.dietReport,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           _ReportDetailSection(
-            title: '인바디 리포트',
+            title: Text(
+              '인바디 리포트',
+              style: TextStyle(
+                color: Colors.grey[800],
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             data:
                 _showCurrentData
                     ? currentReport.inbodyReport
@@ -400,7 +422,7 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
 }
 
 class _ReportDetailSection extends StatelessWidget {
-  final String title;
+  final Widget title;
   final dynamic data;
 
   const _ReportDetailSection({required this.title, required this.data});
@@ -414,142 +436,150 @@ class _ReportDetailSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
+        title,
+        const SizedBox(height: 8),
         Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title == '운동 리포트') ...[
-                  _buildScoreRow(
-                    '성실도 점수',
-                    (data as ExerciseReport).diligenceScore,
-                  ),
-                  _buildScoreRow(
-                    '개인운동 점수',
-                    (data as ExerciseReport).personalExerciseScore,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('운동 성과 요약'),
-                  Text(
-                    (data as ExerciseReport).recentTrainingPattern,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('운동 강점'),
-                  Text(
-                    (data as ExerciseReport).strengthsAndGoodHabits,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('개선 사항'),
-                  Text(
-                    (data as ExerciseReport).weaknesses,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('트레이너 코멘트'),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue, width: 1),
-                      borderRadius: BorderRadius.circular(8),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide.none,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if ((title as Text).data == '운동 리포트') ...[
+                    _buildScoreRow(
+                      '성실도 점수',
+                      (data as ExerciseReport).diligenceScore,
                     ),
-                    child: Text(
-                      (data as ExerciseReport).trainerMent,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w500,
+                    _buildScoreRow(
+                      '개인 운동 점수',
+                      (data as ExerciseReport).personalExerciseScore,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('운동 성과 요약'),
+                    Text(
+                      (data as ExerciseReport).recentTrainingPattern,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('운동 강점'),
+                    Text(
+                      (data as ExerciseReport).strengthsAndGoodHabits,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('개선 사항'),
+                    Text(
+                      (data as ExerciseReport).weaknesses,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('트레이너 코멘트'),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.blue, width: 1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        (data as ExerciseReport).trainerMent,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                ] else if (title == '식단 리포트') ...[
-                  _buildScoreRow(
-                    '식단 평가 점수',
-                    (data as DietReport).dietScore ?? 0,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('식단 평가 요약'),
-                  Text(
-                    (data as DietReport).recentDietPattern ?? '데이터가 없습니다',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('식단 강점'),
-                  Text(
-                    (data as DietReport).strengths ?? '데이터가 없습니다',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('개선 사항'),
-                  Text(
-                    (data as DietReport).problems ?? '데이터가 없습니다',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('트레이너 코멘트'),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue, width: 1),
-                      borderRadius: BorderRadius.circular(8),
+                  ] else if ((title as Text).data == '식단 리포트') ...[
+                    _buildScoreRow(
+                      '식단 평가 점수',
+                      (data as DietReport).dietScore ?? 0,
                     ),
-                    child: Text(
-                      (data as DietReport).trainerMent ?? '데이터가 없습니다',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('식단 평가 요약'),
+                    Text(
+                      (data as DietReport).recentDietPattern ?? '데이터가 없습니다',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('식단 강점'),
+                    Text(
+                      (data as DietReport).strengths ?? '데이터가 없습니다',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('개선 사항'),
+                    Text(
+                      (data as DietReport).problems ?? '데이터가 없습니다',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('트레이너 코멘트'),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.blue, width: 1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        (data as DietReport).trainerMent ?? '데이터가 없습니다',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                ] else if (title == '인바디 리포트') ...[
-                  _buildScoreRow('BMI 점수', (data as InbodyReport).bmiScore),
-                  _buildScoreRow(
-                    '골격근량 점수',
-                    (data as InbodyReport).skeletalMuscleScore,
-                  ),
-                  _buildScoreRow(
-                    '체지방률 점수',
-                    (data as InbodyReport).bodyFatScore,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('체성분 현황'),
-                  Text(
-                    '${(data as InbodyReport).bmiAnalysis}\n${(data as InbodyReport).skeletalMuscleAnalysis}\n${(data as InbodyReport).bodyFatAnalysis}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('인바디 평가'),
-                  Text(
-                    (data as InbodyReport).summary,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildSectionTitle('트레이너 코멘트'),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue, width: 1),
-                      borderRadius: BorderRadius.circular(8),
+                  ] else if ((title as Text).data == '인바디 리포트') ...[
+                    _buildScoreRow('BMI 점수', (data as InbodyReport).bmiScore),
+                    _buildScoreRow(
+                      '골격근량 점수',
+                      (data as InbodyReport).skeletalMuscleScore,
                     ),
-                    child: Text(
-                      (data as InbodyReport).trainerMent,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w500,
+                    _buildScoreRow(
+                      '체지방률 점수',
+                      (data as InbodyReport).bodyFatScore,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('체성분 현황'),
+                    Text(
+                      '${(data as InbodyReport).bmiAnalysis}\n${(data as InbodyReport).skeletalMuscleAnalysis}\n${(data as InbodyReport).bodyFatAnalysis}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('인바디 평가'),
+                    Text(
+                      (data as InbodyReport).summary,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSectionTitle('트레이너 코멘트'),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.blue, width: 1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        (data as InbodyReport).trainerMent,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -808,23 +838,26 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '운동 통계',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
           _buildSummaryCards(),
           const SizedBox(height: 32),
-          const Text(
+          Text(
             '최근 운동',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
           ),
           const SizedBox(height: 8),
           _buildRecentStats(),
           const SizedBox(height: 32),
-          const Text(
+          Text(
             '주요 운동 TOP 3',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
           ),
           const SizedBox(height: 8),
           _buildTopExercises(),
@@ -881,141 +914,145 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
 
     return Column(
       children: [
-        const Text(
-          '개인 운동 통계',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue,
-          ),
-        ),
-        const SizedBox(height: 16),
         Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
+          width: double.infinity,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            '개인 운동 통계',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
-                spreadRadius: 1,
-                blurRadius: 4,
-                offset: const Offset(2, 2),
-              ),
-            ],
+            side: BorderSide.none,
           ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      '개인 운동 횟수',
-                      '${_exerciseRecords.length}회',
-                      Icons.calendar_today,
-                      Colors.blue,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        '개인 운동 횟수',
+                        '${_exerciseRecords.length}회',
+                        Icons.calendar_today,
+                        Colors.blue,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      '누적 세트',
-                      '$totalExercises세트',
-                      Icons.fitness_center,
-                      Colors.green,
+                    Expanded(
+                      child: _buildSummaryCard(
+                        '누적 세트',
+                        '$totalExercises세트',
+                        Icons.fitness_center,
+                        Colors.green,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      '운동 종류',
-                      '$uniqueExercises종류',
-                      Icons.category,
-                      Colors.orange,
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        '운동 종류',
+                        '$uniqueExercises종류',
+                        Icons.category,
+                        Colors.orange,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      '누적 중량',
-                      '${totalWeight.toStringAsFixed(1)}kg',
-                      Icons.monitor_weight,
-                      Colors.purple,
+                    Expanded(
+                      child: _buildSummaryCard(
+                        '누적 중량',
+                        '${totalWeight.toStringAsFixed(1)}kg',
+                        Icons.monitor_weight,
+                        Colors.purple,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 24),
-        const Text(
-          'PT 통계',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.green,
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 32),
         Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
-                spreadRadius: 1,
-                blurRadius: 4,
-                offset: const Offset(2, 2),
-              ),
-            ],
+          width: double.infinity,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'PT 통계',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+            ),
           ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      'PT 횟수',
-                      '${_ptLogExercises.length}회',
-                      Icons.calendar_today,
-                      Colors.blue,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide.none,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        'PT 횟수',
+                        '${_ptLogExercises.length}회',
+                        Icons.calendar_today,
+                        Colors.blue,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      '누적 세트',
-                      '$totalPtExercises세트',
-                      Icons.fitness_center,
-                      Colors.green,
+                    Expanded(
+                      child: _buildSummaryCard(
+                        '누적 세트',
+                        '$totalPtExercises세트',
+                        Icons.fitness_center,
+                        Colors.green,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      '운동 종류',
-                      '$uniquePtExercises종류',
-                      Icons.category,
-                      Colors.orange,
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        '운동 종류',
+                        '$uniquePtExercises종류',
+                        Icons.category,
+                        Colors.orange,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      '누적 중량',
-                      '${totalPtWeight.toStringAsFixed(1)}kg',
-                      Icons.monitor_weight,
-                      Colors.purple,
+                    Expanded(
+                      child: _buildSummaryCard(
+                        '누적 중량',
+                        '${totalPtWeight.toStringAsFixed(1)}kg',
+                        Icons.monitor_weight,
+                        Colors.purple,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1066,70 +1103,81 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
 
     final recentRecords = _exerciseRecords.take(5).toList();
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ...recentRecords.asMap().entries.map((entry) {
-              final index = entry.key;
-              final record = entry.value;
-              final date = DateTime.parse(record.date);
-              return InkWell(
-                onTap: () => _selectDateAndSwitchTab(record.date),
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: index == recentRecords.length - 1 ? 0 : 12,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${record.records.length}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide.none,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              ...recentRecords.asMap().entries.map((entry) {
+                final index = entry.key;
+                final record = entry.value;
+                final date = DateTime.parse(record.date);
+                return InkWell(
+                  onTap: () => _selectDateAndSwitchTab(record.date),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      bottom: index == recentRecords.length - 1 ? 0 : 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${record.records.length}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${date.year}년 ${date.month}월 ${date.day}일',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${date.year}년 ${date.month}월 ${date.day}일',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${record.records.length}개의 운동',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                              const SizedBox(height: 4),
+                              Text(
+                                '${record.records.length}개의 운동',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(Icons.chevron_right, color: Colors.grey[400]),
-                    ],
+                        Icon(Icons.chevron_right, color: Colors.grey[400]),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
-          ],
+                );
+              }).toList(),
+            ],
+          ),
         ),
       ),
     );
@@ -1155,54 +1203,68 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     final top3Exercises = sortedExercises.take(3).toList();
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ...top3Exercises.asMap().entries.map((entry) {
-              final index = entry.key;
-              final exercise = entry.value;
-              return Padding(
-                padding: EdgeInsets.only(bottom: index == 2 ? 0 : 12),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide.none,
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              ...top3Exercises.asMap().entries.map((entry) {
+                final index = entry.key;
+                final exercise = entry.value;
+                return Padding(
+                  padding: EdgeInsets.only(bottom: index == 2 ? 0 : 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        exercise.key,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          exercise.key,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
-                    Text(
-                      '${exercise.value}회',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ],
+                      Text(
+                        '${exercise.value}회',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
         ),
       ),
     );
@@ -1299,54 +1361,65 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                     children:
                         groupedExercise.exercises.map((exercise) {
                           return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    exercise.exerciseName,
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceAround,
-                                    children: [
-                                      _buildExerciseDetail(
-                                        '무게',
-                                        '${exercise.weight}kg',
-                                      ),
-                                      _buildExerciseDetail(
-                                        '횟수',
-                                        exercise.reps.toString(),
-                                      ),
-                                      _buildExerciseDetail(
-                                        '세트',
-                                        exercise.sets.toString(),
-                                      ),
-                                      _buildExerciseDetail(
-                                        '휴식',
-                                        '${exercise.restTime}초',
-                                      ),
-                                    ],
-                                  ),
-                                  if (exercise.feedback?.isNotEmpty ??
-                                      false) ...[
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      '피드백:',
-                                      style: TextStyle(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide.none,
+                            ),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      exercise.exerciseName,
+                                      style: const TextStyle(
+                                        fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    Text(exercise.feedback ?? ''),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        _buildExerciseDetail(
+                                          '무게',
+                                          '${exercise.weight}kg',
+                                        ),
+                                        _buildExerciseDetail(
+                                          '횟수',
+                                          exercise.reps.toString(),
+                                        ),
+                                        _buildExerciseDetail(
+                                          '세트',
+                                          exercise.sets.toString(),
+                                        ),
+                                        _buildExerciseDetail(
+                                          '휴식',
+                                          '${exercise.restTime}초',
+                                        ),
+                                      ],
+                                    ),
+                                    if (exercise.feedback?.isNotEmpty ??
+                                        false) ...[
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        '피드백:',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(exercise.feedback ?? ''),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           );
@@ -1391,57 +1464,68 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                         record.records
                             .map(
                               (exercise) => Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        exercise.exerciseName,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceAround,
-                                        children: [
-                                          _buildExerciseDetail(
-                                            '무게',
-                                            '${exercise.recordData['weight'] ?? 0}kg',
-                                          ),
-                                          _buildExerciseDetail(
-                                            '횟수',
-                                            exercise.recordData['reps']
-                                                    ?.toString() ??
-                                                '0',
-                                          ),
-                                          _buildExerciseDetail(
-                                            '세트',
-                                            exercise.recordData['sets']
-                                                    ?.toString() ??
-                                                '0',
-                                          ),
-                                        ],
-                                      ),
-                                      if (exercise
-                                              .memoData['memo']
-                                              ?.isNotEmpty ??
-                                          false) ...[
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          '메모:',
-                                          style: TextStyle(
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: BorderSide.none,
+                                ),
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          exercise.exerciseName,
+                                          style: const TextStyle(
+                                            fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        Text(exercise.memoData['memo'] ?? ''),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            _buildExerciseDetail(
+                                              '무게',
+                                              '${exercise.recordData['weight'] ?? 0}kg',
+                                            ),
+                                            _buildExerciseDetail(
+                                              '횟수',
+                                              exercise.recordData['reps']
+                                                      ?.toString() ??
+                                                  '0',
+                                            ),
+                                            _buildExerciseDetail(
+                                              '세트',
+                                              exercise.recordData['sets']
+                                                      ?.toString() ??
+                                                  '0',
+                                            ),
+                                          ],
+                                        ),
+                                        if (exercise
+                                                .memoData['memo']
+                                                ?.isNotEmpty ??
+                                            false) ...[
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            '메모:',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(exercise.memoData['memo'] ?? ''),
+                                        ],
                                       ],
-                                    ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1601,40 +1685,37 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           ],
         ),
         const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children:
-                  _exerciseData.map((data) {
-                    final improvement = _formatImprovement(
-                      data['initialWeight'] as double,
-                      data['recentWeight'] as double,
-                    );
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        '${data['exercise']}: $improvement',
-                        style: TextStyle(
-                          color:
-                              improvement.contains('증가')
-                                  ? Colors.green
-                                  : improvement.contains('감소')
-                                  ? Colors.red
-                                  : Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children:
+                _exerciseData.map((data) {
+                  final improvement = _formatImprovement(
+                    data['initialWeight'] as double,
+                    data['recentWeight'] as double,
+                  );
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      '${data['exercise']}: $improvement',
+                      style: TextStyle(
+                        color:
+                            improvement.contains('증가')
+                                ? Colors.green
+                                : improvement.contains('감소')
+                                ? Colors.red
+                                : Colors.grey,
+                        fontWeight: FontWeight.bold,
                       ),
-                    );
-                  }).toList(),
-            ),
+                    ),
+                  );
+                }).toList(),
           ),
         ),
       ],
@@ -1969,6 +2050,7 @@ class _DietReportTabState extends State<DietReportTab>
           ),
           const SizedBox(height: 16),
           Card(
+            elevation: 0,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -2215,6 +2297,7 @@ class _DietReportTabState extends State<DietReportTab>
       itemCount: 6,
       itemBuilder: (context, index) {
         return Card(
+          elevation: 0,
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
@@ -2334,6 +2417,7 @@ class _InbodyReportTabState extends State<InbodyReportTab> {
           ),
           const SizedBox(height: 16),
           Card(
+            elevation: 0,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -2349,6 +2433,7 @@ class _InbodyReportTabState extends State<InbodyReportTab> {
           ),
           const SizedBox(height: 16),
           Card(
+            elevation: 0,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
@@ -2375,6 +2460,7 @@ class _ReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
