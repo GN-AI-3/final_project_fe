@@ -910,7 +910,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                 children: [
                   Expanded(
                     child: _buildSummaryCard(
-                      '총 운동 횟수',
+                      '개인 운동 횟수',
                       '${_exerciseRecords.length}회',
                       Icons.calendar_today,
                       Colors.blue,
