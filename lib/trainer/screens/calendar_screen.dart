@@ -478,6 +478,40 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   context,
                   MaterialPageRoute(
                     builder:
+                        (context) => PtLogScreen(
+                      scheduleId: meeting.scheduleId!,
+                      meeting: meeting,
+                      title:
+                      meeting.eventName.length >= 8
+                          ? '${meeting.eventName.substring(9)} 회원님 PT 일지 작성'
+                          : '${meeting.eventName} 회원님 PT 일지 작성',
+                    ),
+                  ),
+                ).then((_) {
+                  if (_state.lastStartDate != null &&
+                      _state.lastEndDate != null) {
+                    _loadMeetings(
+                      startDate: _state.lastStartDate,
+                      endDate: _state.lastEndDate,
+                    );
+                  }
+                });
+              },
+              icon: const Icon(Icons.edit_note),
+              label: const Text('PT 일지 작성'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 45),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
                         (context) => TrainingReportScreen(
                           ptContractId: meeting.ptContractId!,
                         ),
@@ -493,55 +527,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            if (DateTime.now().difference(meeting.to).inHours <= 2) ...[
+            if (DateTime.now().difference(meeting.to).inHours <= 24) ...[
               ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => PtLogScreen(
-                            scheduleId: meeting.scheduleId!,
-                            meeting: meeting,
-                            title:
-                                meeting.eventName.length >= 8
-                                    ? '${meeting.eventName.substring(8)} 회원님 PT 기록'
-                                    : '${meeting.eventName} 회원님 PT 기록',
-                          ),
-                    ),
-                  ).then((_) {
-                    if (_state.lastStartDate != null &&
-                        _state.lastEndDate != null) {
-                      _loadMeetings(
-                        startDate: _state.lastStartDate,
-                        endDate: _state.lastEndDate,
-                      );
-                    }
-                  });
+                  Navigator.pop(context);
+                  _showNoShowDialog(meeting);
                 },
-                icon: const Icon(Icons.edit_note),
-                label: const Text('PT 기록하기'),
+                icon: const Icon(Icons.person_off),
+                label: const Text('불참 처리'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 45),
                 ),
               ),
-              const SizedBox(height: 8),
             ],
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                _showNoShowDialog(meeting);
-              },
-              icon: const Icon(Icons.person_off),
-              label: const Text('불참 처리'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 45),
-              ),
-            ),
           ] else if (!(meeting.description?.contains('[취소된 일정]') ?? false) &&
               !(meeting.description?.contains('[변경된 일정]') ?? false) &&
               !(meeting.description?.contains('[완료된 일정]') ?? false)) ...[

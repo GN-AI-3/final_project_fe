@@ -320,11 +320,15 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
                       fontSize: 10,
                     ),
                     gridBorderData: BorderSide(
-                      color: Colors.grey.withOpacity(0.5),
+                      color: Colors.grey.withOpacity(0.3),
                       width: 0.5,
                     ),
                     radarBorderData: BorderSide(
-                      color: Colors.grey.withOpacity(0.5),
+                      color: Colors.grey.withOpacity(0.3),
+                      width: 0.5,
+                    ),
+                    tickBorderData: BorderSide(
+                      color: Colors.grey.withOpacity(0.3),
                       width: 0.5,
                     ),
                   ),
@@ -660,7 +664,7 @@ class ExerciseReportTab extends StatefulWidget {
 class _ExerciseReportTabState extends State<ExerciseReportTab>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _tabs = ['종합', '운동 추이', '운동 기록'];
+  final List<String> _tabs = ['종합', '성과 분석', '운동 기록'];
   final MemberPersonalExerciseService _personalExerciseService =
       MemberPersonalExerciseService();
   final PtLogsService _ptLogsService = PtLogsService();
@@ -805,7 +809,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '운동 성과 요약',
+            '운동 통계',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 24),
@@ -880,7 +884,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         const Text(
           '개인 운동 통계',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.blue,
           ),
@@ -922,9 +926,9 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         ),
         const SizedBox(height: 24),
         const Text(
-          'PT 운동 통계',
+          'PT 통계',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.green,
           ),
@@ -1157,14 +1161,14 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '주간 운동 추이',
+            '주간 성적',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           _buildWeeklyTrendChart(),
           const SizedBox(height: 32),
           const Text(
-            '주요 운동별 추이',
+            'Top 3 운동 기록 비교',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -1420,107 +1424,107 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
   }
 
   Widget _buildWeeklyTrendChart() {
-    return Container(
-      height: 250,
-      padding: const EdgeInsets.all(16),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: true,
-            horizontalInterval: 1,
-            verticalInterval: 1,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.grey.withOpacity(0.3),
-                strokeWidth: 1,
-              );
-            },
-            getDrawingVerticalLine: (value) {
-              return FlLine(
-                color: Colors.grey.withOpacity(0.3),
-                strokeWidth: 1,
-              );
-            },
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: 1,
-                getTitlesWidget: (value, meta) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      _weeklyData[value.toInt()]['week'] as String,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                  );
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                interval: 1,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    value.toInt().toString(),
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  );
-                },
-                reservedSize: 35,
-              ),
+    if (_weeklyData.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
+            '아직 운동 기록이 없습니다.\n운동 기록을 추가하면 주간 추이를 확인할 수 있습니다.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
             ),
           ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(color: Colors.grey.withOpacity(0.3)),
-          ),
-          minX: 0,
-          maxX: (_weeklyData.length - 1).toDouble(),
-          minY: 0,
-          maxY:
-              _weeklyData.fold<double>(
-                0,
-                (max, item) => math.max(max, (item['count'] as int).toDouble()),
-              ) +
-              1,
-          lineBarsData: [
-            LineChartBarData(
-              spots:
-                  _weeklyData.asMap().entries.map((entry) {
-                    return FlSpot(
-                      entry.key.toDouble(),
-                      (entry.value['count'] as int).toDouble(),
-                    );
-                  }).toList(),
-              isCurved: true,
-              color: Colors.blue,
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, percent, barData, index) {
-                  return FlDotCirclePainter(
-                    radius: 4,
-                    color: Colors.white,
-                    strokeWidth: 2,
-                    strokeColor: Colors.blue,
-                  );
-                },
+        ),
+      );
+    }
+
+    final weekData = _weeklyData.first;
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildScoreCard(
+                '출석률',
+                weekData['attendanceRate'] as double,
+                '${weekData['exerciseDays']}일 / 5일',
+                Colors.blue,
               ),
-              belowBarData: BarAreaData(
-                show: true,
-                color: Colors.blue.withOpacity(0.1),
+              const SizedBox(height: 12),
+              _buildScoreCard(
+                '운동 다양성',
+                weekData['diversityScore'] as double,
+                '${weekData['uniqueExercises']}종류',
+                Colors.green,
+              ),
+              const SizedBox(height: 12),
+              _buildScoreCard(
+                '운동 강도',
+                weekData['intensityScore'] as double,
+                '중량/세트/횟수 기준',
+                Colors.orange,
+              ),
+              const SizedBox(height: 12),
+              _buildScoreCard(
+                '종합 점수',
+                weekData['totalScore'] as double,
+                '출석률 40% + 다양성 30% + 강도 30%',
+                Colors.purple,
+                isTotal: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScoreCard(String title, double score, String detail, Color color, {bool isTotal = false}) {
+    return Card(
+      elevation: isTotal ? 4 : 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isTotal ? 18 : 16,
+                    fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+                    color: isTotal ? color : Colors.black87,
+                  ),
+                ),
+                Text(
+                  '${score.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontSize: isTotal ? 20 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: score / 100,
+              backgroundColor: color.withOpacity(0.1),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 8,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              detail,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
               ),
             ),
           ],
@@ -1746,12 +1750,24 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       });
     }
 
-    // 최근 무게 기준으로 상위 5개 운동 선택
-    result.sort(
-      (a, b) =>
-          (b['recentWeight'] as double).compareTo(a['recentWeight'] as double),
-    );
-    return result.take(5).toList();
+    // 운동 횟수 기준으로 상위 3개 운동 선택
+    final exerciseCounts = <String, int>{};
+    for (var record in _exerciseRecords) {
+      for (var exercise in record.records) {
+        exerciseCounts[exercise.exerciseName] =
+            (exerciseCounts[exercise.exerciseName] ?? 0) + 1;
+      }
+    }
+
+    final sortedExercises =
+        exerciseCounts.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+    final top3Exercises = sortedExercises.take(3).map((e) => e.key).toSet();
+
+    return result
+        .where((data) => top3Exercises.contains(data['exercise']))
+        .toList();
   }
 
   String _formatDate(DateTime date) {
@@ -1759,11 +1775,11 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
   }
 
   String _formatImprovement(double initialWeight, double recentWeight) {
-    final improvement = ((recentWeight - initialWeight) / initialWeight * 100);
+    final improvement = (recentWeight - initialWeight).toInt();
     if (improvement > 0) {
-      return '초기 대비 ${improvement.toStringAsFixed(1)}% 증가했습니다.';
+      return '초기 대비 ${improvement}Kg 증가했습니다.';
     } else if (improvement < 0) {
-      return '초기 대비 ${improvement.abs().toStringAsFixed(1)}% 감소했습니다.';
+      return '초기 대비 ${improvement.abs()}Kg 감소했습니다.';
     } else {
       return '초기 무게를 유지하고 있습니다.';
     }
@@ -1883,20 +1899,55 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     final now = DateTime.now();
     final List<Map<String, dynamic>> data = [];
 
-    for (int i = 3; i >= 0; i--) {
-      final weekStart = now.subtract(Duration(days: i * 7));
-      final weekEnd = weekStart.add(const Duration(days: 6));
+    // 지난 주의 시작일과 종료일 계산
+    final lastWeekStart = now.subtract(const Duration(days: 7));
+    final lastWeekEnd = now.subtract(const Duration(days: 1));
 
-      int count = 0;
-      for (var record in _exerciseRecords) {
-        final recordDate = DateTime.parse(record.date);
-        if (recordDate.isAfter(weekStart) && recordDate.isBefore(weekEnd)) {
-          count++;
-        }
+    // 해당 주의 운동 기록 수집
+    final weekRecords = _exerciseRecords.where((record) {
+      final recordDate = DateTime.parse(record.date);
+      return recordDate.isAfter(lastWeekStart) && recordDate.isBefore(lastWeekEnd);
+    }).toList();
+
+    // 출석률 계산 (목표 운동일 수 대비 실제 운동일 수)
+    const targetDays = 5; // 주 5일 운동을 목표로 설정
+    final actualDays = weekRecords.length;
+    final attendanceRate = (actualDays / targetDays) * 100;
+
+    // 운동 다양성 점수 계산
+    final uniqueExercises = weekRecords
+        .expand((record) => record.records)
+        .map((exercise) => exercise.exerciseName)
+        .toSet()
+        .length;
+    final diversityScore = (uniqueExercises / 5) * 100; // 5종류 이상 운동을 목표로 설정
+
+    // 운동 강도 점수 계산
+    double intensityScore = 0;
+    for (var record in weekRecords) {
+      for (var exercise in record.records) {
+        final weight = (exercise.recordData['weight'] as int? ?? 0).toDouble();
+        final sets = exercise.recordData['sets'] as int? ?? 0;
+        final reps = exercise.recordData['reps'] as int? ?? 0;
+        
+        // 운동 강도 점수 = (중량 * 세트 * 횟수) / 100
+        intensityScore += (weight * sets * reps) / 100;
       }
-
-      data.add({'week': '${i + 1}주차', 'count': count});
     }
+    intensityScore = math.min(intensityScore, 100); // 최대 100점으로 제한
+
+    // 종합 점수 계산 (출석률 40%, 다양성 30%, 강도 30%)
+    final totalScore = (attendanceRate * 0.4) + (diversityScore * 0.3) + (intensityScore * 0.3);
+
+    data.add({
+      'week': '지난 주',
+      'attendanceRate': attendanceRate,
+      'diversityScore': diversityScore,
+      'intensityScore': intensityScore,
+      'totalScore': totalScore,
+      'exerciseDays': actualDays,
+      'uniqueExercises': uniqueExercises,
+    });
 
     return data;
   }
@@ -1918,6 +1969,7 @@ class _DietReportTabState extends State<DietReportTab>
   Report? _currentReport;
   bool _isLoading = true;
   String? _error;
+  bool _isDisposed = false; // dispose 상태 추적을 위한 플래그 추가
 
   @override
   void initState() {
@@ -1927,13 +1979,16 @@ class _DietReportTabState extends State<DietReportTab>
   }
 
   Future<void> _loadReport() async {
+    if (_isDisposed) return; // dispose된 상태면 early return
     try {
       final reports = await ReportService.getLatestReports(widget.ptContractId);
+      if (_isDisposed || !mounted) return; // 두 번째 체크
       setState(() {
         _currentReport = reports.isNotEmpty ? reports[0] : null;
         _isLoading = false;
       });
     } catch (e) {
+      if (_isDisposed || !mounted) return; // 두 번째 체크
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -1943,6 +1998,7 @@ class _DietReportTabState extends State<DietReportTab>
 
   @override
   void dispose() {
+    _isDisposed = true; // dispose 상태 설정
     _tabController.dispose();
     super.dispose();
   }
