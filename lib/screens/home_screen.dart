@@ -293,30 +293,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
                 .toList(),
             if (hasMoreMeetings) ...[
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _isExpanded = !_isExpanded;
-                      });
-                    },
-                    icon: Icon(
-                      _isExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: const Color(0xff2746f8),
-                    ),
-                    label: Text(
-                      _isExpanded
-                          ? '접기'
-                          : '펼치기 (${_todayMeetings.length - maxVisibleMeetings}건)',
-                      style: const TextStyle(
-                        color: Color(0xff2746f8),
-                        fontWeight: FontWeight.bold,
-                      ),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  },
+                  icon: Icon(
+                    _isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: const Color(0xff2746f8),
+                  ),
+                  label: Text(
+                    _isExpanded
+                        ? '접기'
+                        : '펼치기 (${_todayMeetings.length - maxVisibleMeetings}건)',
+                    style: const TextStyle(
+                      color: Color(0xff2746f8),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
+              ),
             ],
           ],
         ),
@@ -439,7 +439,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildStatItem(
                             icon: Icons.attach_money,
                             title: '이번 달 수입',
-                            value: '???만원',
+                            value: '???만 원',
                             color: const Color(0xffF72828),
                           ),
                           const SizedBox(height: 16),

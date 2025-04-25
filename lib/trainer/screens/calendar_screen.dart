@@ -294,24 +294,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildContractDropdown() {
-    return Align(
-      alignment: const Alignment(-0.725, 0),
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.7,
-        child: DropdownButtonFormField<PtContract>(
-          value: _selectedContract,
-          isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'PT 회원 선택',
-            hintText: '회원을 선택하세요',
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            constraints: BoxConstraints(maxWidth: 300),
-          ),
-          items:
-              _ptContracts
-                  .where(
-                    (contract) => contract.status.toLowerCase() == 'active',
-                  )
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('PT 회원 선택', style: TextStyle(fontSize: 16)),
+          const SizedBox(height: 8),
+          StatefulBuilder(
+            builder: (context, setState) => DropdownButtonFormField<PtContract>(
+              value: _selectedContract,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
+              items: _ptContracts
+                  .where((contract) => contract.status.toLowerCase() == 'active')
                   .map((contract) {
                     return DropdownMenuItem<PtContract>(
                       value: contract,
@@ -321,8 +326,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     );
                   })
                   .toList(),
-          onChanged: (value) => setState(() => _selectedContract = value),
-        ),
+              onChanged: (value) {
+                setState(() => _selectedContract = value);
+                this.setState(() {});
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -343,43 +353,71 @@ class _CalendarScreenState extends State<CalendarScreen> {
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('시작 시간: ', style: TextStyle(fontSize: 16)),
-          DropdownButton<String>(
-            value: _selectedAmPm,
-            items:
-                ['오전', '오후'].map((value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value, style: const TextStyle(fontSize: 16)),
-                  );
-                }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedAmPm = value);
-              }
-            },
+          const Text('시작 시간', style: TextStyle(fontSize: 16)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              StatefulBuilder(
+                builder: (context, setState) => DropdownButton<String>(
+                  value: _selectedAmPm,
+                  underline: Container(),
+                  isDense: true,
+                  icon: const Icon(Icons.arrow_drop_down, size: 30),
+                  items: ['오전', '오후'].map((value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(
+                        value,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedAmPm = value);
+                      this.setState(() {});
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              StatefulBuilder(
+                builder: (context, setState) => DropdownButton<int>(
+                  value: _selectedHour,
+                  underline: Container(),
+                  isDense: true,
+                  icon: const Icon(Icons.arrow_drop_down, size: 30),
+                  items: List.generate(12, (index) => index + 1).map((value) {
+                    return DropdownMenuItem<int>(
+                      value: value,
+                      child: Text(
+                        '$value',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _selectedHour = value);
+                      this.setState(() {});
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text('시', style: TextStyle(fontSize: 20, color: Colors.black87)),
+            ],
           ),
-          const SizedBox(width: 8),
-          DropdownButton<int>(
-            value: _selectedHour,
-            items:
-                List.generate(12, (index) => index + 1).map((value) {
-                  return DropdownMenuItem<int>(
-                    value: value,
-                    child: Text('$value', style: const TextStyle(fontSize: 16)),
-                  );
-                }).toList(),
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _selectedHour = value);
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-          const Text('시', style: TextStyle(fontSize: 16)),
         ],
       ),
     );
