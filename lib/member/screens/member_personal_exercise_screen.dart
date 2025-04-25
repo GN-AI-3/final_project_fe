@@ -181,7 +181,8 @@ class MemberPersonalExerciseScreenState extends State<MemberPersonalExerciseScre
         widget.selectedDate,
       );
       if (kDebugMode) {
-        print('Received response from service: ${response.finalResponse}');
+        print('Received response from service: ${response.content}');
+        print('Final response content: ${response.finalResponse}');
       }
 
       if (mounted) {
@@ -189,8 +190,9 @@ class MemberPersonalExerciseScreenState extends State<MemberPersonalExerciseScre
           _messages.removeLast(); // 로딩 메시지 제거
           _messages.add(
             ChatMessage(
-              content: response.finalResponse ?? response.content,
+              content: response.content,
               role: MemberPersonalExerciseConstants.assistantRole,
+              finalResponse: response.finalResponse,
             ),
           );
           _isLoading = false;

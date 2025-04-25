@@ -36,11 +36,55 @@ class MemberPersonalExerciseService {
   // 회원 ID 가져오기
   Future<int> getMemberId() async {
     try {
-      final memberId = await AuthService.getUserId();
-      if (memberId == null) {
-        throw Exception('멤버 ID를 찾을 수 없습니다. 토큰을 확인해주세요.');
+      // 1. 먼저 SharedPreferences에서 저장된 ID를 확인
+      final prefs = await SharedPreferences.getInstance();
+      final memberId = prefs.getString('member_id');
+      
+      if (memberId != null) {
+        if (kDebugMode) {
+          print('Retrieved member ID from preferences: $memberId');
+        }
+        return int.parse(memberId);
       }
-      return memberId;
+      
+      // 2. 저장된 ID가 없으면 JWT 토큰에서 추출 시도
+      final token = await getToken();
+      final tokenParts = token.split('.');
+      if (tokenParts.length == 3) {
+        try {
+          final payload = jsonDecode(
+            utf8.decode(
+              base64Url.decode(
+                base64Url.normalize(tokenParts[1])
+              )
+            )
+          );
+          if (kDebugMode) {
+            print('JWT Token payload: $payload');
+          }
+          if (payload['id'] != null) {
+            final id = payload['id'].toString();
+            await prefs.setString('member_id', id);
+            if (kDebugMode) {
+              print('Retrieved member ID from token: $id');
+            }
+            return int.parse(id);
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error decoding token: $e');
+          }
+        }
+      }
+      
+      // 3. 기존 방식 (AuthService 사용) 시도
+      final userIdFromAuth = await AuthService.getUserId();
+      if (userIdFromAuth != null) {
+        await prefs.setString('member_id', userIdFromAuth.toString());
+        return userIdFromAuth;
+      }
+      
+      throw Exception('멤버 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
     } catch (e) {
       if (kDebugMode) {
         print('Error getting memberId: $e');
@@ -84,7 +128,17 @@ class MemberPersonalExerciseService {
         if (data['error'] != null) {
           return ChatMessage(content: data['error'], role: 'assistant');
         }
-        return ChatMessage(content: data['finalResponse'], role: 'assistant');
+        
+        // finalResponse 필드가 있는 경우 이를 content와 finalResponse로 설정
+        if (data['finalResponse'] != null) {
+          return ChatMessage(
+            content: data['finalResponse'],
+            role: 'assistant',
+            finalResponse: data['finalResponse'],
+          );
+        }
+        
+        return ChatMessage(content: data['content'] ?? '응답이 없습니다.', role: 'assistant');
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
       } else {

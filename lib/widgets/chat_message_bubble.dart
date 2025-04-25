@@ -87,7 +87,8 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
   }
 
   void _copyToClipboard(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: widget.message.content));
+    final textToCopy = widget.message.finalResponse ?? widget.message.content;
+    Clipboard.setData(ClipboardData(text: textToCopy));
     CustomToast.show(
       context: context,
       message: '메시지가 복사되었습니다',
@@ -98,6 +99,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
   @override
   Widget build(BuildContext context) {
     final isUser = widget.message.role == 'user';
+    final displayContent = widget.message.finalResponse ?? widget.message.content;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -119,7 +121,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                     isUser ? const Color(0xff2746f8) : const Color(0xffe8e8e8),
                 borderRadius: BorderRadius.circular(12.0),
               ),
-              child: _buildMessageContent(widget.message.content),
+              child: _buildMessageContent(displayContent),
             ),
           ),
           if (_showCopiedToast)

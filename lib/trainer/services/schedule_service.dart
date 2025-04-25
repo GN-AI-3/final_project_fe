@@ -21,16 +21,14 @@ abstract class ScheduleService {
     DateTime? startTime,
     DateTime? endTime,
     String? status,
-  }) async {
-    try {
-      final queryParams = _buildQueryParams(startTime, endTime, status);
-      final uri = Uri.parse(
-        '$baseUrl$_schedulesEndpoint',
-      ).replace(queryParameters: queryParams);
+  });
 
+  /// 일정 상세 조회
+  Future<Schedule> getScheduleDetail(int scheduleId) async {
+    try {
       final token = await getToken();
       final response = await http.get(
-        uri,
+        Uri.parse('${ScheduleService.baseUrl}${ScheduleService._schedulesEndpoint}/$scheduleId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -44,8 +42,8 @@ abstract class ScheduleService {
       }
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Schedule.fromJson(json)).toList();
+        final data = jsonDecode(response.body);
+        return Schedule.fromJson(data);
       } else if (response.statusCode == 401) {
         throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
       } else {
@@ -57,12 +55,11 @@ abstract class ScheduleService {
         print('SocketException: $e');
       }
       throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        print('Error in getSchedules: $e');
-        print('Stack trace: $stackTrace');
+        print('Error in getScheduleDetail: $e');
       }
-      throw Exception('Error: $e');
+      rethrow;
     }
   }
 
@@ -85,7 +82,7 @@ abstract class ScheduleService {
 
       final token = await getToken();
       final response = await http.post(
-        Uri.parse('$baseUrl$_schedulesEndpoint'),
+        Uri.parse('${ScheduleService.baseUrl}${ScheduleService._schedulesEndpoint}'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -133,7 +130,7 @@ abstract class ScheduleService {
 
       final token = await getToken();
       final response = await http.patch(
-        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/cancel'),
+        Uri.parse('${ScheduleService.baseUrl}${ScheduleService._schedulesEndpoint}/$scheduleId/cancel'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -183,7 +180,7 @@ abstract class ScheduleService {
     try {
       final token = await getToken();
       final response = await http.patch(
-        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/change'),
+        Uri.parse('${ScheduleService.baseUrl}${ScheduleService._schedulesEndpoint}/$scheduleId/change'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -235,7 +232,7 @@ abstract class ScheduleService {
 
       final token = await getToken();
       final response = await http.patch(
-        Uri.parse('$baseUrl$_schedulesEndpoint/$scheduleId/no_show'),
+        Uri.parse('${ScheduleService.baseUrl}${ScheduleService._schedulesEndpoint}/$scheduleId/no_show'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -317,6 +314,108 @@ class TrainerScheduleService extends ScheduleService {
     }
     return token;
   }
+  
+  // 트레이너 ID 가져오기
+  Future<String?> _getTrainerId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? trainerId = prefs.getString('trainer_id');
+      
+      if (trainerId == null) {
+        // JWT 토큰에서 트레이너 ID 추출 시도
+        final token = await getToken();
+        final tokenParts = token.split('.');
+        if (tokenParts.length == 3) {
+          try {
+            final payload = jsonDecode(
+              utf8.decode(
+                base64Url.decode(
+                  base64Url.normalize(tokenParts[1])
+                )
+              )
+            );
+            if (payload['id'] != null) {
+              trainerId = payload['id'].toString();
+              await prefs.setString('trainer_id', trainerId);
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('Error decoding token: $e');
+            }
+          }
+        }
+      }
+      
+      return trainerId;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting trainer ID: $e');
+      }
+      return null;
+    }
+  }
+  
+  @override
+  Future<List<Schedule>> getSchedules({
+    DateTime? startTime,
+    DateTime? endTime,
+    String? status,
+  }) async {
+    try {
+      final trainerId = await _getTrainerId();
+      
+      if (trainerId == null) {
+        throw Exception('트레이너 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
+      
+      final queryParams = _buildQueryParams(startTime, endTime, status);
+      queryParams['trainerId'] = int.parse(trainerId).toString();
+      
+      final uri = Uri.parse(
+        '${ScheduleService.baseUrl}${ScheduleService._schedulesEndpoint}',
+      ).replace(queryParameters: queryParams);
+
+      if (kDebugMode) {
+        print('Requesting schedules with trainerId: ${queryParams['trainerId']}');
+        print('Request URI: ${uri.toString()}');
+      }
+
+      final token = await getToken();
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Schedule.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '일정 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in getSchedules: $e');
+      }
+      rethrow;
+    }
+  }
 }
 
 /// 회원용 일정 서비스
@@ -329,5 +428,107 @@ class MemberScheduleService extends ScheduleService {
       throw Exception('회원 토큰이 없습니다. 다시 로그인해주세요.');
     }
     return token;
+  }
+  
+  // 회원 ID 가져오기
+  Future<String?> _getMemberId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? memberId = prefs.getString('member_id');
+      
+      if (memberId == null) {
+        // JWT 토큰에서 회원 ID 추출 시도
+        final token = await getToken();
+        final tokenParts = token.split('.');
+        if (tokenParts.length == 3) {
+          try {
+            final payload = jsonDecode(
+              utf8.decode(
+                base64Url.decode(
+                  base64Url.normalize(tokenParts[1])
+                )
+              )
+            );
+            if (payload['id'] != null) {
+              memberId = payload['id'].toString();
+              await prefs.setString('member_id', memberId);
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('Error decoding token: $e');
+            }
+          }
+        }
+      }
+      
+      return memberId;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting member ID: $e');
+      }
+      return null;
+    }
+  }
+  
+  @override
+  Future<List<Schedule>> getSchedules({
+    DateTime? startTime,
+    DateTime? endTime,
+    String? status,
+  }) async {
+    try {
+      final memberId = await _getMemberId();
+      
+      if (memberId == null) {
+        throw Exception('회원 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
+      
+      final queryParams = _buildQueryParams(startTime, endTime, status);
+      queryParams['memberId'] = int.parse(memberId).toString();
+      
+      final uri = Uri.parse(
+        '${ScheduleService.baseUrl}${ScheduleService._schedulesEndpoint}',
+      ).replace(queryParameters: queryParams);
+
+      if (kDebugMode) {
+        print('Requesting schedules with memberId: ${queryParams['memberId']}');
+        print('Request URI: ${uri.toString()}');
+      }
+
+      final token = await getToken();
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Schedule.fromJson(json)).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('인증이 필요합니다. 다시 로그인해주세요.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['error'] ?? '일정 조회에 실패했습니다.');
+      }
+    } on SocketException catch (e) {
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+      throw Exception('서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in getSchedules: $e');
+      }
+      rethrow;
+    }
   }
 }
