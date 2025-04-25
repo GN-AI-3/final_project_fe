@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../utils/jwt_decoder.dart';
 import '../config/env.dart';
 import 'fcm_service.dart';
 
@@ -10,10 +9,46 @@ class AuthService {
   static const String _userTokenKey = 'user_token';
   static const String _userTypeKey = 'user_type';
   static const String _memberType = 'member';
-  static const String _trainerType = 'trainer';
-  
+
   static String get baseUrl => Env.getServerURL();
   
+  // JWT 디코딩 관련 메서드들
+  static int? _getMemberIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final data = json.decode(decoded);
+
+      return data['memberId'] as int?;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error decoding member ID: $e');
+      }
+      return null;
+    }
+  }
+
+  static Map<String, dynamic>? _decodeToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      return json.decode(decoded);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error decoding token: $e');
+      }
+      return null;
+    }
+  }
+
   // Login method
   static Future<bool> login(String email, String password, String userType) async {
     try {
@@ -162,8 +197,9 @@ class AuthService {
   
   // Check if user is a trainer
   static Future<bool> isTrainer() async {
-    final userType = await getUserType();
-    return userType == _trainerType;
+    final prefs = await SharedPreferences.getInstance();
+    final userType = prefs.getString(_userTypeKey);
+    return userType != _memberType;  // member가 아니면 trainer
   }
   
   // Get user token
@@ -176,6 +212,28 @@ class AuthService {
   static Future<int?> getUserId() async {
     final token = await getToken();
     if (token == null) return null;
-    return JwtDecoder.getMemberId(token);
+    return _getMemberIdFromToken(token);
+  }
+
+  // Get user info from token
+  static Future<Map<String, dynamic>?> getUserInfo() async {
+    try {
+      final token = await getToken();
+      if (token == null) return null;
+
+      final data = _decodeToken(token);
+      if (data == null) return null;
+
+      return {
+        'name': data['name'] ?? '',
+        'email': data['email'] ?? '',
+        'role': data['role'] ?? '',
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting user info: $e');
+      }
+      return null;
+    }
   }
 } 

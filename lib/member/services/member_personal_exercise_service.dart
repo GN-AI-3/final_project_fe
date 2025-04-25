@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/env.dart';
 import '../../models/chat_message.dart';
 import '../../models/exercise_record.dart';
-import '../../utils/jwt_decoder.dart';
+import '../../services/auth_service.dart';
 
 class MemberPersonalExerciseService {
   static String get baseUrl => Env.getServerURL();
@@ -36,8 +36,7 @@ class MemberPersonalExerciseService {
   // 회원 ID 가져오기
   Future<int> getMemberId() async {
     try {
-      final token = await getToken();
-      final memberId = JwtDecoder.getMemberId(token);
+      final memberId = await AuthService.getUserId();
       if (memberId == null) {
         throw Exception('멤버 ID를 찾을 수 없습니다. 토큰을 확인해주세요.');
       }

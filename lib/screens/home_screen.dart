@@ -1,12 +1,19 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../member/screens/member_calendar_screen.dart';
 import '../member/screens/member_chat_screen.dart';
 import '../member/screens/member_profile_screen.dart';
+import '../models/meeting.dart';
+import '../services/auth_service.dart';
 import '../trainer/screens/calendar_screen.dart';
 import '../trainer/screens/pt_contract_screen.dart';
 import '../trainer/screens/trainer_chat_screen.dart';
-import '../services/auth_service.dart';
+import '../trainer/screens/trainer_profile_screen.dart';
+import '../trainer/services/schedule_service.dart' as trainer_schedule_service;
+import '../widgets/common_bottom_navigation_bar.dart';
 import '../widgets/custom_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,25 +27,32 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   String _userName = "";
   bool _isTrainer = false;
-  
+  List<Meeting> _todayMeetings = [];
+  bool _isExpanded = false;
+
   @override
   void initState() {
     super.initState();
-    _loadUserInfo();
+    _initializeData();
   }
-  
+
+  Future<void> _initializeData() async {
+    await _loadUserInfo();
+    await _loadTodayMeetings();
+  }
+
   Future<void> _loadUserInfo() async {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
-      final userType = await AuthService.getUserType();
+      final userInfo = await AuthService.getUserInfo();
       final isTrainer = await AuthService.isTrainer();
-      
+
       setState(() {
         _isTrainer = isTrainer;
-        _userName = userType == 'trainer' ? '트레이너' : '회원';
+        _userName = userInfo?['name'] ?? (isTrainer ? '트레이너' : '회원');
         _isLoading = false;
       });
     } catch (e) {
@@ -46,6 +60,63 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
       _showErrorDialog('사용자 정보를 로드하는 중 오류가 발생했습니다.');
+    }
+  }
+
+  Future<void> _loadTodayMeetings() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      List<Meeting> meetings;
+      if (_isTrainer) {
+        final service = trainer_schedule_service.TrainerScheduleService();
+        final schedules = await service.getSchedules(
+          startTime: startOfDay,
+          endTime: endOfDay,
+          status: 'SCHEDULED',
+        );
+        meetings =
+            schedules
+                .map(
+                  (schedule) => Meeting(
+                    '${schedule.memberName} 회원님 (${schedule.currentPtCount}회차)',
+                    schedule.startTime,
+                    schedule.endTime,
+                    const Color(0xff28CAF7),
+                    false,
+                  ),
+                )
+                .toList();
+      } else {
+        final service = trainer_schedule_service.MemberScheduleService();
+        final schedules = await service.getSchedules(
+          startTime: startOfDay,
+          endTime: endOfDay,
+          status: 'SCHEDULED',
+        );
+        meetings =
+            schedules
+                .map(
+                  (schedule) => Meeting(
+                    schedule.trainerName,
+                    schedule.startTime,
+                    schedule.endTime,
+                    const Color(0xff28CAF7),
+                    false,
+                  ),
+                )
+                .toList();
+      }
+
+      setState(() {
+        _todayMeetings = meetings;
+      });
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('오늘의 일정을 불러오는 중 오류가 발생했습니다.');
+      }
     }
   }
 
@@ -58,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder:
           (context) => CustomDialog(
-            title: '오류',
+            title: '앗!',
             content: Text(error),
             actions: [
               TextButton(
@@ -70,191 +141,440 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _logout() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
-      await AuthService.logout();
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorDialog('로그아웃 중 오류가 발생했습니다.');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
+  Widget _buildTodayScheduleCard() {
+    if (_todayMeetings.isEmpty) {
+      return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide.none,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff28CAF7).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_today,
+                      color: Color(0xff28CAF7),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Text(
+                      '오늘의 남은 일정',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 47),
+              const Center(
+                child: Text(
+                  '오늘의 일정을 모두 소화하셨어요!',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 47),
+            ],
+          ),
         ),
       );
     }
-    
-    return Scaffold(
-      backgroundColor: const Color(0xfff0f0f0),
-      appBar: AppBar(
-        title: Text(
-          _isTrainer ? '트레이너 홈' : '회원 홈',
-          style: const TextStyle(
-            color: Color(0xff3B3C40),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: const Color(0xfff0f0f0),
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xff3B3C40)),
-        forceMaterialTransparency: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const MemberProfileScreen(),
-                ),
-              );
-            },
-            tooltip: '프로필',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: '로그아웃',
-          ),
-        ],
+
+    // 최대 표시할 일정 수
+    const int maxVisibleMeetings = 1;
+    final bool hasMoreMeetings = _todayMeetings.length > maxVisibleMeetings;
+    final visibleMeetings =
+        _isExpanded || !hasMoreMeetings
+            ? _todayMeetings
+            : _todayMeetings.sublist(0, maxVisibleMeetings);
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide.none,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                // Welcome message
-                Text(
-                  '$_userName님 환영합니다',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xff3B3C40),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xff28CAF7).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today,
+                    color: Color(0xff28CAF7),
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 32),
-                
-                // Display appropriate features based on user type
-                if (_isTrainer) ...[
-                  // Trainer features
-                  _buildFeatureCard(
-                    icon: Icons.chat,
-                    title: '채팅하기',
-                    description: '회원과 채팅으로 소통하세요',
-                    onTap: () => _navigateToScreen(const TrainerChatScreen()),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    '오늘의 남은 일정',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
-                  _buildFeatureCard(
-                    icon: Icons.calendar_today,
-                    title: '캘린더',
-                    description: 'PT 일정을 관리하고 확인하세요',
-                    onTap: () => _navigateToScreen(const CalendarScreen()),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildFeatureCard(
-                    icon: Icons.description,
-                    title: '계약 관리',
-                    description: '회원 계약 정보 관리',
-                    onTap: () => _navigateToScreen(const PtContractScreen()),
-                  ),
-                ] else ...[
-                  // Member features
-                  _buildFeatureCard(
-                    icon: Icons.chat,
-                    title: '채팅하기',
-                    description: '24시간 응답 가능한 챗봇',
-                    onTap: () => _navigateToScreen(const MemberChatScreen()),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildFeatureCard(
-                    icon: Icons.calendar_today,
-                    title: '캘린더',
-                    description: 'PT 일정 관리 및 조회',
-                    onTap: () => _navigateToScreen(const MemberCalendarScreen()),
-                  ),
-                ],
+                ),
+                TextButton(
+                  onPressed:
+                      () => _navigateToScreen(
+                        _isTrainer
+                            ? const CalendarScreen()
+                            : const MemberCalendarScreen(),
+                      ),
+                  child: const Text('전체 일정 보기'),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            ...visibleMeetings
+                .map(
+                  (meeting) => Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: meeting.background.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: meeting.background,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                meeting.eventName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${DateFormat('HH:mm').format(meeting.from)} - ${DateFormat('HH:mm').format(meeting.to)}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+            if (hasMoreMeetings) ...[
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isExpanded = !_isExpanded;
+                      });
+                    },
+                    icon: Icon(
+                      _isExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: const Color(0xff2746f8),
+                    ),
+                    label: Text(
+                      _isExpanded
+                          ? '접기'
+                          : '펼치기 (${_todayMeetings.length - maxVisibleMeetings}건)',
+                      style: const TextStyle(
+                        color: Color(0xff2746f8),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildFeatureCard({
-    required IconData icon,
-    required String title,
-    required String description,
-    required VoidCallback onTap,
-    bool isLoading = false,
-    String? error,
-  }) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: isLoading ? null : onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          constraints: const BoxConstraints(minWidth: 200, maxWidth: 300),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 40, color: const Color(0xff2746f8)),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xfff0f0f0),
+      body: RefreshIndicator(
+        onRefresh: _loadTodayMeetings,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.only(
+              top: 8,
+              bottom: 24,
+              left: 16,
+              right: 16,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Welcome message
+                const SizedBox(height: 72),
+                Text(
+                  '$_userName님 환영합니다 :)',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff3B3C40),
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-              if (isLoading) ...[
-                const SizedBox(height: 4),
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ],
-              if (error != null) ...[
                 const SizedBox(height: 4),
                 Text(
-                  error,
-                  style: const TextStyle(color: Colors.red, fontSize: 11),
-                  textAlign: TextAlign.center,
+                  '오늘도 건강한 하루 되세요!',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 20),
+
+                // Today's schedule
+                _buildTodayScheduleCard(),
+                const SizedBox(height: 16),
+
+                // Statistics card
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xff2746f8).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.analytics,
+                                color: Color(0xff2746f8),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            const Expanded(
+                              child: Text(
+                                '통계',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Divider(color: Colors.grey[200], thickness: 1),
+                        const SizedBox(height: 8),
+                        if (_isTrainer) ...[
+                          _buildStatItem(
+                            icon: Icons.people,
+                            title: '누적 회원',
+                            value: '12명',
+                            color: const Color(0xff2746f8),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.description,
+                            title: '진행중인 회원',
+                            value: '5명',
+                            color: const Color(0xff7A8DF7),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.people_outline,
+                            title: '이번 달 신규 회원',
+                            value: '3명',
+                            color: const Color(0xffF728A8),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.calendar_today,
+                            title: '이번 달 PT 진행 횟수',
+                            value: '48회',
+                            color: const Color(0xff28CAF7),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.attach_money,
+                            title: '이번 달 수입',
+                            value: '???만원',
+                            color: const Color(0xffF72828),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.star,
+                            title: '평균 만족도',
+                            value: '4.8점',
+                            color: const Color(0xffF7B728),
+                          ),
+                        ] else ...[
+                          _buildStatItem(
+                            icon: Icons.fitness_center,
+                            title: '이번 달 운동',
+                            value: '8회',
+                            color: const Color(0xff2746f8),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.timer,
+                            title: '총 운동 시간',
+                            value: '16시간',
+                            color: const Color(0xff28CAF7),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.description,
+                            title: '남은 PT',
+                            value: '12회',
+                            color: const Color(0xff7A8DF7),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.trending_up,
+                            title: '체중 변화',
+                            value: '-2.5kg',
+                            color: const Color(0xff8F28F7),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.speed,
+                            title: '운동 강도',
+                            value: '중간',
+                            color: const Color(0xffF72828),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildStatItem(
+                            icon: Icons.emoji_events,
+                            title: '달성률',
+                            value: '85%',
+                            color: const Color(0xffF7B728),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ],
-            ],
+            ),
           ),
         ),
       ),
+      bottomNavigationBar: CommonBottomNavigationBar(
+        isTrainer: _isTrainer,
+        currentIndex: 2,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              _navigateToScreen(
+                _isTrainer
+                    ? const CalendarScreen()
+                    : const MemberCalendarScreen(),
+              );
+              break;
+            case 1:
+              _navigateToScreen(
+                _isTrainer
+                    ? const TrainerChatScreen()
+                    : const MemberChatScreen(),
+              );
+              break;
+            case 2:
+              // 홈 - 현재 화면이므로 아무것도 하지 않음
+              break;
+            case 3:
+              if (_isTrainer) {
+                _navigateToScreen(const PtContractScreen());
+              } else {
+                _navigateToScreen(const MemberCalendarScreen());
+              }
+              break;
+            case 4:
+              _navigateToScreen(
+                _isTrainer
+                    ? const TrainerProfileScreen()
+                    : const MemberProfileScreen(),
+              );
+              break;
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
