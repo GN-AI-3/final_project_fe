@@ -192,7 +192,7 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
             '당신은 이제 PT 이전과 이후로 나뉩니다.',
             style: TextStyle(color: Colors.grey, fontSize: 14),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 36),
           SizedBox(
             height: 300,
             child: AnimatedBuilder(
@@ -203,11 +203,11 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
                     dataSets: [
                       RadarDataSet(
                         fillColor: Colors.green.withOpacity(
-                          _selectedDataSetIndex == 1 ? 0.5 : 0.3,
+                          _selectedDataSetIndex == 1 ? 0.4 : 0.2,
                         ),
                         borderColor: Colors.green,
-                        borderWidth: _selectedDataSetIndex == 1 ? 3 : 2,
-                        entryRadius: 4,
+                        borderWidth: _selectedDataSetIndex == 1 ? 2 : 1,
+                        entryRadius: 3,
                         dataEntries: [
                           RadarEntry(
                             value:
@@ -251,11 +251,11 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
                       ),
                       RadarDataSet(
                         fillColor: Colors.blue.withOpacity(
-                          _selectedDataSetIndex == 0 ? 0.5 : 0.3,
+                          _selectedDataSetIndex == 0 ? 0.45 : 0.3,
                         ),
                         borderColor: Colors.blue,
-                        borderWidth: _selectedDataSetIndex == 0 ? 3 : 2,
-                        entryRadius: 4,
+                        borderWidth: _selectedDataSetIndex == 0 ? 2 : 1,
+                        entryRadius: 3,
                         dataEntries: [
                           RadarEntry(
                             value:
@@ -455,15 +455,22 @@ class _ReportDetailSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if ((title as Text).data == '운동 리포트') ...[
-                    _buildScoreRow(
-                      '성실도 점수',
-                      (data as ExerciseReport).diligenceScore,
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 2,
+                      children: [
+                        _buildScoreRow(
+                          '성실도 점수',
+                          (data as ExerciseReport).diligenceScore,
+                        ),
+                        _buildScoreRow(
+                          '개인 운동 점수',
+                          (data as ExerciseReport).personalExerciseScore,
+                        ),
+                      ],
                     ),
-                    _buildScoreRow(
-                      '개인 운동 점수',
-                      (data as ExerciseReport).personalExerciseScore,
-                    ),
-                    const SizedBox(height: 16),
+                    Divider(color: Colors.grey[200], thickness: 1),
+                    const SizedBox(height: 12),
                     _buildSectionTitle('운동 성과 요약'),
                     Text(
                       (data as ExerciseReport).recentTrainingPattern,
@@ -503,11 +510,12 @@ class _ReportDetailSection extends StatelessWidget {
                       '식단 평가 점수',
                       (data as DietReport).dietScore ?? 0,
                     ),
-                    const SizedBox(height: 16),
+                    Divider(color: Colors.grey[200], thickness: 1),
+                    const SizedBox(height: 12),
                     _buildSectionTitle('식단 평가 요약'),
                     Text(
                       (data as DietReport).recentDietPattern ?? '데이터가 없습니다',
-                      style: const TextStyle(fontSize: 14),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[800]),
                     ),
                     const SizedBox(height: 16),
                     _buildSectionTitle('식단 강점'),
@@ -539,16 +547,26 @@ class _ReportDetailSection extends StatelessWidget {
                       ),
                     ),
                   ] else if ((title as Text).data == '인바디 리포트') ...[
-                    _buildScoreRow('BMI 점수', (data as InbodyReport).bmiScore),
-                    _buildScoreRow(
-                      '골격근량 점수',
-                      (data as InbodyReport).skeletalMuscleScore,
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 2,
+                      children: [
+                        _buildScoreRow(
+                          'BMI 점수',
+                          (data as InbodyReport).bmiScore,
+                        ),
+                        _buildScoreRow(
+                          '골격근량 점수',
+                          (data as InbodyReport).skeletalMuscleScore,
+                        ),
+                        _buildScoreRow(
+                          '체지방률 점수',
+                          (data as InbodyReport).bodyFatScore,
+                        ),
+                      ],
                     ),
-                    _buildScoreRow(
-                      '체지방률 점수',
-                      (data as InbodyReport).bodyFatScore,
-                    ),
-                    const SizedBox(height: 16),
+                    Divider(color: Colors.grey[200], thickness: 1),
+                    const SizedBox(height: 12),
                     _buildSectionTitle('체성분 현황'),
                     Text(
                       '${(data as InbodyReport).bmiAnalysis}\n${(data as InbodyReport).skeletalMuscleAnalysis}\n${(data as InbodyReport).bodyFatAnalysis}',
@@ -592,14 +610,19 @@ class _ReportDetailSection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _getScoreColor(scoreValue),
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: _getScoreColor(scoreValue).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
@@ -608,7 +631,7 @@ class _ReportDetailSection extends StatelessWidget {
             child: Text(
               '$scoreValue점',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: _getScoreColor(scoreValue),
               ),
@@ -958,10 +981,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                         Colors.green,
                       ),
                     ),
-                  ],
-                ),
-                Row(
-                  children: [
                     Expanded(
                       child: _buildSummaryCard(
                         '운동 종류',
@@ -1029,10 +1048,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                         Colors.green,
                       ),
                     ),
-                  ],
-                ),
-                Row(
-                  children: [
                     Expanded(
                       child: _buildSummaryCard(
                         '운동 종류',
