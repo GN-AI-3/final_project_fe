@@ -9,12 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/chat_message.dart';
 import '../services/trainer_chat_service.dart';
 import '../../widgets/chat_input_field.dart';
-import '../../widgets/chat_message_bubble.dart';
 import '../../widgets/common_bottom_navigation_bar.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/pt_contract_screen.dart';
 import '../../member/screens/member_profile_screen.dart';
 import '../../screens/home_screen.dart';
+import '../../widgets/chat_message_group.dart';
 
 class TrainerChatConstants {
   static const String userRole = 'user';
@@ -210,16 +210,7 @@ class TrainerChatScreenState extends State<TrainerChatScreen> {
           child: Column(
             children: [
               Expanded(
-                child: ListView.builder(
-                  itemCount: _messages.length,
-                  padding: const EdgeInsets.all(TrainerChatConstants.messagePadding),
-                  reverse: true,
-                  itemBuilder: (context, index) {
-                    return ChatMessageBubble(
-                      message: _messages[_messages.length - 1 - index],
-                    );
-                  },
-                ),
+                child: _buildMessageList(),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
@@ -268,6 +259,57 @@ class TrainerChatScreenState extends State<TrainerChatScreen> {
           }
         },
       ),
+    );
+  }
+
+  Widget _buildMessageList() {
+    if (_messages.isEmpty) {
+      return const Center(
+        child: Text(
+          '메시지를 시작해보세요!',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    // 메시지 그룹화
+    final groupedMessages = <List<ChatMessage>>[];
+    List<ChatMessage> currentGroup = [];
+    String? currentRole;
+
+    for (final message in _messages) {
+      if (currentRole == null) {
+        currentRole = message.role;
+        currentGroup = [message];
+      } else if (message.role == currentRole) {
+        currentGroup.add(message);
+      } else {
+        if (currentGroup.isNotEmpty) {
+          groupedMessages.add(List.from(currentGroup));
+        }
+        currentRole = message.role;
+        currentGroup = [message];
+      }
+    }
+    if (currentGroup.isNotEmpty) {
+      groupedMessages.add(currentGroup);
+    }
+
+    return ListView.builder(
+      reverse: true,
+      padding: const EdgeInsets.all(16),
+      itemCount: groupedMessages.length,
+      itemBuilder: (context, index) {
+        final messages = groupedMessages[groupedMessages.length - 1 - index];
+        return ChatMessageGroup(
+          messages: messages,
+          isTrainer: true,
+          role: TrainerChatConstants.userRole,
+        );
+      },
     );
   }
 
