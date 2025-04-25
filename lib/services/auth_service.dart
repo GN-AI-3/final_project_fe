@@ -79,9 +79,17 @@ class AuthService {
           if (userType == _memberType) {
             // TRAINEE_TOKEN 저장
             await prefs.setString('TRAINEE_TOKEN', token);
+            // 회원 ID 저장
+            if (data['memberId'] != null) {
+              await prefs.setString('member_id', data['memberId'].toString());
+            }
           } else {
             // TRAINER_TOKEN 저장
             await prefs.setString('TRAINER_TOKEN', token);
+            // 트레이너 ID 저장
+            if (data['trainerId'] != null) {
+              await prefs.setString('trainer_id', data['trainerId'].toString());
+            }
           }
           
           return true;
@@ -128,9 +136,20 @@ class AuthService {
       // DotEnv write 사용하지 않고 SharedPreferences만 사용
       if (userType == _memberType) {
         await prefs.remove('TRAINEE_TOKEN');
+        
+        // 회원 채팅 내역 삭제
+        await prefs.remove('member_chat_history');
+        await prefs.remove('member_id');
       } else {
         await prefs.remove('TRAINER_TOKEN');
+        
+        // 트레이너 채팅 내역 삭제
+        await prefs.remove('trainer_chat_history');
+        await prefs.remove('trainer_id');
       }
+
+      // 공통 채팅 내역 삭제
+      await prefs.remove('chat_history');
       
       return true;
     } catch (e) {
@@ -142,6 +161,13 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_userTokenKey);
       await prefs.remove(_userTypeKey);
+      
+      // 로그아웃 시 채팅 내역 삭제
+      await prefs.remove('member_chat_history');
+      await prefs.remove('trainer_chat_history');
+      await prefs.remove('chat_history');
+      await prefs.remove('member_id');
+      await prefs.remove('trainer_id');
       
       return true;
     }

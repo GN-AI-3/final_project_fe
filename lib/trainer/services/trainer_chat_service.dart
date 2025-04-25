@@ -23,22 +23,63 @@ class TrainerChatService {
   
   // 트레이너 ID 가져오기
   Future<String?> _getTrainerId() async {
-    if (_trainerId != null) return _trainerId;
-    
     try {
       final prefs = await SharedPreferences.getInstance();
-      _trainerId = prefs.getString('trainer_id');
       
-      // 임시 - 트레이너 ID가 없는 경우 샘플 ID 사용 (실제 앱에서는 제거 필요)
-      _trainerId ??= '1';
+      // First try to get from stored preferences
+      _trainerId = prefs.getString('trainer_id');
+      if (_trainerId != null) {
+        if (kDebugMode) {
+          print('Retrieved trainer ID from preferences: $_trainerId');
+        }
+        return _trainerId;
+      }
+      
+      // If not in preferences, try to get from token
+      final token = await _getAuthToken();
+      if (token != null) {
+        try {
+          // Try to decode the token to get trainer ID
+          final tokenParts = token.split('.');
+          if (tokenParts.length == 3) {
+            try {
+              final payload = jsonDecode(
+                utf8.decode(
+                  base64Url.decode(
+                    base64Url.normalize(tokenParts[1])
+                  )
+                )
+              );
+              if (kDebugMode) {
+                print('JWT Token payload: $payload');
+              }
+              if (payload['id'] != null) {
+                _trainerId = payload['id'].toString();
+                await prefs.setString('trainer_id', _trainerId!);
+                if (kDebugMode) {
+                  print('Retrieved trainer ID from token: $_trainerId');
+                }
+                return _trainerId;
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('Error decoding token: $e');
+              }
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error getting trainer ID from token: $e');
+          }
+        }
+      }
       
       return _trainerId;
     } catch (e) {
       if (kDebugMode) {
         print('Error getting trainer ID: $e');
       }
-      // 기본 ID 반환 (실제 앱에서는 로그인으로 유도 필요)
-      return 'trainer_1234';
+      return null;
     }
   }
 
@@ -55,12 +96,20 @@ class TrainerChatService {
         throw Exception('인증 토큰이 없습니다. 다시 로그인해주세요.');
       }
       
+      if (trainerId == null) {
+        throw Exception('트레이너 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
+      
       if (kDebugMode) {
         print('Sending message with trainer ID: $trainerId');
-        print('Request body: ${jsonEncode({
+        final requestBody = {
           'content': message,
-          'trainer_id': trainerId,
-        })}');
+          'role': 'trainer',
+          'trainerId': int.parse(trainerId),
+        };
+        print('Request body: ${jsonEncode(requestBody)}');
+        print('Request body type: ${requestBody.runtimeType}');
+        print('trainerId type: ${requestBody['trainerId'].runtimeType}');
       }
 
       final response = await http.post(
@@ -72,7 +121,8 @@ class TrainerChatService {
         },
         body: jsonEncode({
           'content': message,
-          'trainer_id': trainerId,
+          'role': 'trainer',
+          'trainerId': int.parse(trainerId),
         }),
       );
 

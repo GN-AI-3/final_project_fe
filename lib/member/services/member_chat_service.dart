@@ -29,16 +29,39 @@ class MemberChatService {
       final prefs = await SharedPreferences.getInstance();
       _memberId = prefs.getString('member_id');
       
-      // 임시 - 회원 ID가 없는 경우 샘플 ID 사용 (실제 앱에서는 제거 필요)
-      _memberId ??= '4';
+      if (_memberId == null) {
+        // 토큰으로부터 회원 정보 가져오기 시도
+        final token = await _getAuthToken();
+        if (token != null) {
+          try {
+            final response = await http.get(
+              Uri.parse('${baseUrl}/api/member/me'),
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Accept': 'application/json',
+              },
+            );
+            
+            if (response.statusCode == 200) {
+              final data = jsonDecode(response.body);
+              _memberId = data['id'].toString();
+              // 회원 ID 저장
+              await prefs.setString('member_id', _memberId!);
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('Error fetching member info: $e');
+            }
+          }
+        }
+      }
       
       return _memberId;
     } catch (e) {
       if (kDebugMode) {
         print('Error getting member ID: $e');
       }
-      // 기본 ID 반환 (실제 앱에서는 로그인으로 유도 필요)
-      return 'member_5678';
+      return null;
     }
   }
 
@@ -57,10 +80,21 @@ class MemberChatService {
       
       if (kDebugMode) {
         print('Sending message with member ID: $memberId');
-        print('Request body: ${jsonEncode({
+        if (memberId == null) {
+          throw Exception('회원 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+        }
+        final requestBody = {
           'content': message,
-          'role': 'member'
-        })}');
+          'role': 'member',
+          'memberId': int.parse(memberId),
+        };
+        print('Request body: ${jsonEncode(requestBody)}');
+        print('Request body type: ${requestBody.runtimeType}');
+        print('memberId type: ${requestBody['memberId'].runtimeType}');
+      }
+
+      if (memberId == null) {
+        throw Exception('회원 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
       }
 
       final response = await http.post(
@@ -72,7 +106,8 @@ class MemberChatService {
         },
         body: jsonEncode({
           'content': message,
-          'role': 'member'
+          'role': 'member',
+          'memberId': int.parse(memberId),
         }),
       );
 
