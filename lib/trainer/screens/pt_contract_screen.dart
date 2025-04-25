@@ -9,7 +9,12 @@ import '../../utils/date_formatter.dart';
 import '../../utils/korean_postposition.dart';
 import '../../widgets/custom_dialog.dart';
 import '../../widgets/custom_toast.dart';
+import '../../widgets/common_bottom_navigation_bar.dart';
 import '../services/pt_contract_service.dart';
+import '../screens/calendar_screen.dart';
+import '../screens/trainer_chat_screen.dart';
+import '../../member/screens/member_profile_screen.dart';
+import '../../screens/home_screen.dart';
 
 class PtContractScreen extends StatefulWidget {
   const PtContractScreen({Key? key}) : super(key: key);
@@ -597,6 +602,41 @@ class PtContractScreenState extends State<PtContractScreen> {
                   );
                 },
               ),
+      bottomNavigationBar: CommonBottomNavigationBar(
+        isTrainer: true,
+        currentIndex: 3,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CalendarScreen()),
+              );
+              break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TrainerChatScreen()),
+              );
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+              break;
+            case 3:
+              // 현재 화면이므로 아무것도 하지 않음
+              break;
+            case 4:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+              );
+              break;
+          }
+        },
+      ),
     );
   }
 

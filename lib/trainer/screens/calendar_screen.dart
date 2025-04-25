@@ -7,8 +7,13 @@ import '../../models/pt_contract.dart';
 import '../../models/schedule.dart';
 import '../../widgets/custom_dialog.dart';
 import '../../widgets/custom_toast.dart';
+import '../../widgets/common_bottom_navigation_bar.dart';
 import '../screens/pt_log_screen.dart';
 import '../screens/training_report_screen.dart';
+import '../screens/pt_contract_screen.dart';
+import '../screens/trainer_chat_screen.dart';
+import '../../member/screens/member_profile_screen.dart';
+import '../../screens/home_screen.dart';
 import '../services/pt_contract_service.dart';
 import '../services/pt_logs_service.dart';
 import '../services/schedule_service.dart';
@@ -1135,6 +1140,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddScheduleDialog,
         child: const Icon(Icons.add),
+      ),
+      bottomNavigationBar: CommonBottomNavigationBar(
+        isTrainer: true,
+        currentIndex: 0,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              // 현재 화면이므로 아무것도 하지 않음
+              break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const TrainerChatScreen()),
+              );
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+              break;
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PtContractScreen()),
+              );
+              break;
+            case 4:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+              );
+              break;
+          }
+        },
       ),
     );
   }

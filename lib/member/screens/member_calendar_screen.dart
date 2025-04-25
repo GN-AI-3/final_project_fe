@@ -11,6 +11,10 @@ import '../../trainer/services/schedule_service.dart';
 import '../../widgets/custom_dialog.dart';
 import '../screens/member_personal_exercise_screen.dart';
 import '../services/member_personal_exercise_service.dart';
+import '../../widgets/common_bottom_navigation_bar.dart';
+import '../screens/member_chat_screen.dart';
+import '../screens/member_profile_screen.dart';
+import '../../screens/home_screen.dart';
 
 class MemberCalendarConstants {
   static const Map<String, String> statusDescriptions = {
@@ -755,6 +759,35 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: CommonBottomNavigationBar(
+        isTrainer: false,
+        currentIndex: 0,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              // 현재 화면이므로 아무것도 하지 않음
+              break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MemberChatScreen()),
+              );
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+              break;
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+              );
+              break;
+          }
+        },
       ),
     );
   }

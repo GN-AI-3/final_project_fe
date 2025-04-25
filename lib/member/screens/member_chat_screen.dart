@@ -10,6 +10,10 @@ import '../../models/chat_message.dart';
 import '../services/member_chat_service.dart';
 import '../../widgets/chat_input_field.dart';
 import '../../widgets/chat_message_bubble.dart';
+import '../../widgets/common_bottom_navigation_bar.dart';
+import '../screens/member_calendar_screen.dart';
+import '../screens/member_profile_screen.dart';
+import '../../screens/home_screen.dart';
 
 class MemberChatConstants {
   static const String userRole = 'user';
@@ -227,6 +231,35 @@ class MemberChatScreenState extends State<MemberChatScreen> {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: CommonBottomNavigationBar(
+        isTrainer: false,
+        currentIndex: 1,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MemberCalendarScreen()),
+              );
+              break;
+            case 1:
+              // 현재 화면이므로 아무것도 하지 않음
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+              break;
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+              );
+              break;
+          }
+        },
       ),
     );
   }
