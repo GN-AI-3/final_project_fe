@@ -32,11 +32,11 @@ class ChatMessageGroup extends StatelessWidget {
           if (!isUserMessage) ...[
             CircleAvatar(
               radius: 16,
-              backgroundColor: const Color(0xff28CAF7).withOpacity(0.1),
+              backgroundColor: const Color(0xff2746f8).withOpacity(0.1),
               child: const Icon(
                 Icons.person,
                 size: 20,
-                color: Color(0xff28CAF7),
+                color: Color(0xff2746f8),
               ),
             ),
             const SizedBox(width: 8),
@@ -61,7 +61,7 @@ class ChatMessageGroup extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: isUserMessage
-                            ? const Color(0xff28CAF7)
+                            ? const Color(0xff2746f8)
                             : Colors.grey[200],
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -92,11 +92,11 @@ class ChatMessageGroup extends StatelessWidget {
             const SizedBox(width: 8),
             CircleAvatar(
               radius: 16,
-              backgroundColor: const Color(0xff28CAF7).withOpacity(0.1),
+              backgroundColor: const Color(0xff2746f8).withOpacity(0.1),
               child: const Icon(
                 Icons.person,
                 size: 20,
-                color: Color(0xff28CAF7),
+                color: Color(0xff2746f8),
               ),
             ),
           ],
