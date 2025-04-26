@@ -9,6 +9,7 @@ import '../screens/calendar_screen.dart';
 import '../screens/trainer_chat_screen.dart';
 import '../screens/pt_contract_screen.dart';
 import '../../screens/home_screen.dart';
+import '../../services/auth_service.dart';
 
 class TrainerProfileScreen extends StatefulWidget {
   const TrainerProfileScreen({super.key});
@@ -41,6 +42,19 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
       });
       if (mounted) {
         _showErrorDialog('프로필을 불러오는데 실패했습니다.');
+      }
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('로그아웃 중 오류가 발생했습니다.');
       }
     }
   }
@@ -91,6 +105,12 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
             icon: const Icon(Icons.edit),
             onPressed: () {
               // TODO: 프로필 수정 화면으로 이동
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              logout();
             },
           ),
         ],

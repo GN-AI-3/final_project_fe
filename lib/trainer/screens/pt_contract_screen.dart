@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gymggun/trainer/screens/trainer_profile_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/pt_contract.dart';
@@ -13,7 +14,6 @@ import '../../widgets/common_bottom_navigation_bar.dart';
 import '../services/pt_contract_service.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/trainer_chat_screen.dart';
-import '../../member/screens/member_profile_screen.dart';
 import '../../screens/home_screen.dart';
 
 class PtContractScreen extends StatefulWidget {
@@ -631,7 +631,7 @@ class PtContractScreenState extends State<PtContractScreen> {
             case 4:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+                MaterialPageRoute(builder: (context) => const TrainerProfileScreen()),
               );
               break;
           }

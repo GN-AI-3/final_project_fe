@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gymggun/trainer/screens/trainer_profile_screen.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import '../../models/meeting.dart';
@@ -12,7 +13,6 @@ import '../screens/pt_log_screen.dart';
 import '../screens/training_report_screen.dart';
 import '../screens/pt_contract_screen.dart';
 import '../screens/trainer_chat_screen.dart';
-import '../../member/screens/member_profile_screen.dart';
 import '../../screens/home_screen.dart';
 import '../services/pt_contract_service.dart';
 import '../services/pt_logs_service.dart';
@@ -1208,7 +1208,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             case 4:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+                MaterialPageRoute(builder: (context) => const TrainerProfileScreen()),
               );
               break;
           }

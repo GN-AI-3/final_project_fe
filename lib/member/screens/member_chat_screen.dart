@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/chat_message.dart';
 import '../services/member_chat_service.dart';
 import '../../widgets/chat_input_field.dart';
-import '../../widgets/chat_message_bubble.dart';
+import '../../widgets/chat_message_group.dart';
 import '../../widgets/common_bottom_navigation_bar.dart';
 import '../screens/member_calendar_screen.dart';
 import '../screens/member_profile_screen.dart';
@@ -195,6 +195,57 @@ class MemberChatScreenState extends State<MemberChatScreen> {
     }
   }
 
+  Widget _buildMessageList() {
+    if (_messages.isEmpty) {
+      return const Center(
+        child: Text(
+          '메시지를 시작해보세요!',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    // 메시지 그룹화
+    final groupedMessages = <List<ChatMessage>>[];
+    List<ChatMessage> currentGroup = [];
+    String? currentRole;
+
+    for (final message in _messages) {
+      if (currentRole == null) {
+        currentRole = message.role;
+        currentGroup = [message];
+      } else if (message.role == currentRole) {
+        currentGroup.add(message);
+      } else {
+        if (currentGroup.isNotEmpty) {
+          groupedMessages.add(List.from(currentGroup));
+        }
+        currentRole = message.role;
+        currentGroup = [message];
+      }
+    }
+    if (currentGroup.isNotEmpty) {
+      groupedMessages.add(currentGroup);
+    }
+
+    return ListView.builder(
+      reverse: true,
+      padding: const EdgeInsets.all(16),
+      itemCount: groupedMessages.length,
+      itemBuilder: (context, index) {
+        final messages = groupedMessages[groupedMessages.length - 1 - index];
+        return ChatMessageGroup(
+          messages: messages,
+          isTrainer: false,
+          role: MemberChatConstants.userRole,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -209,16 +260,7 @@ class MemberChatScreenState extends State<MemberChatScreen> {
           child: Column(
             children: [
               Expanded(
-                child: ListView.builder(
-                  itemCount: _messages.length,
-                  padding: const EdgeInsets.all(MemberChatConstants.messagePadding),
-                  reverse: true,
-                  itemBuilder: (context, index) {
-                    return ChatMessageBubble(
-                      message: _messages[_messages.length - 1 - index],
-                    );
-                  },
-                ),
+                child: _buildMessageList(),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
@@ -238,29 +280,27 @@ class MemberChatScreenState extends State<MemberChatScreen> {
         onTap: (index) {
           switch (index) {
             case 0:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MemberCalendarScreen()),
-              );
+              _navigateToScreen(const MemberCalendarScreen());
               break;
             case 1:
               // 현재 화면이므로 아무것도 하지 않음
               break;
             case 2:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
+              _navigateToScreen(const HomeScreen());
               break;
             case 3:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
-              );
+              _navigateToScreen(const MemberProfileScreen());
               break;
           }
         },
       ),
+    );
+  }
+
+  void _navigateToScreen(Widget screen) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
     );
   }
 

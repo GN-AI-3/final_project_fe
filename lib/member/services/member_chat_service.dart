@@ -35,7 +35,7 @@ class MemberChatService {
         if (token != null) {
           try {
             final response = await http.get(
-              Uri.parse('${baseUrl}/api/member/me'),
+              Uri.parse('$baseUrl/api/member/me'),
               headers: {
                 'Authorization': 'Bearer $token',
                 'Accept': 'application/json',

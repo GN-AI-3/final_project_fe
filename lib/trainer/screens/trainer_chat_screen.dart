@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:gymggun/trainer/screens/trainer_profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/chat_message.dart';
@@ -12,7 +13,6 @@ import '../../widgets/chat_input_field.dart';
 import '../../widgets/common_bottom_navigation_bar.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/pt_contract_screen.dart';
-import '../../member/screens/member_profile_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../widgets/chat_message_group.dart';
 
@@ -253,7 +253,7 @@ class TrainerChatScreenState extends State<TrainerChatScreen> {
             case 4:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+                MaterialPageRoute(builder: (context) => const TrainerProfileScreen()),
               );
               break;
           }

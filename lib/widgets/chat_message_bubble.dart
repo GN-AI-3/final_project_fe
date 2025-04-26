@@ -19,7 +19,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
   final bool _showCopiedToast = false;
 
   bool _isUrl(String text) {
-    final urlPattern = RegExp(r'https?:\/\/[^\s)]+', caseSensitive: false);
+    final urlPattern = RegExp(r'https?://[^\s)]+', caseSensitive: false);
     return urlPattern.hasMatch(text);
   }
 
@@ -45,7 +45,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
       return Text(content, style: baseStyle);
     }
 
-    final urlPattern = RegExp(r'https?:\/\/[^\s)]+', caseSensitive: false);
+    final urlPattern = RegExp(r'https?://[^\s)]+', caseSensitive: false);
     final matches = urlPattern.allMatches(content);
 
     final spans = <TextSpan>[];
