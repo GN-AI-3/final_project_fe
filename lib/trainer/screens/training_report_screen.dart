@@ -175,8 +175,8 @@ class _ReportComparisonTabState extends State<ReportComparisonTab>
       );
     }
 
-    final currentReport = _reports![1];
-    final previousReport = _reports![0];
+    final currentReport = _reports![0];
+    final previousReport = _reports![1];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),

@@ -486,6 +486,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => TrainingReportScreen(
+                    ptContractId: meeting.ptContractId!,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.assessment),
+            label: const Text('트레이닝 리포트'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 45),
+            ),
+          ),
+          const SizedBox(height: 8),
           if (meeting.description?.contains('[완료된 일정]') ?? false) ...[
             ElevatedButton.icon(
               onPressed: () async {
@@ -544,27 +565,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               label: const Text('PT 일지 작성'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 45),
-              ),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (context) => TrainingReportScreen(
-                          ptContractId: meeting.ptContractId!,
-                        ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.assessment),
-              label: const Text('트레이닝 리포트'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 45),
               ),
