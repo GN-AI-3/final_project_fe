@@ -726,6 +726,8 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
   bool _isLoading = true;
   String? _error;
   String? _selectedDate;
+  bool _isChipsExpanded = false;
+  int? _selectedExerciseIndex;
 
   @override
   void initState() {
@@ -864,7 +866,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
           _buildSummaryCards(),
           const SizedBox(height: 32),
           Text(
-            '최근 운동',
+            '최근 개인 운동',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1295,16 +1297,15 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
             'Top 3 운동 기록 비교',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           _buildExerciseComparisonChart(),
           const SizedBox(height: 24),
           const Text(
             '운동 종류 분포',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
           _buildExerciseTypeDistribution(),
-          const SizedBox(height: 16),
         ],
       ),
     );
@@ -1614,7 +1615,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
                           ),
                         ),
                         BarChartRodData(
-                          toY: data['recentWeight'],
+                          toY: data['maxWeight'],
                           color: color,
                           width: 20,
                           borderRadius: const BorderRadius.vertical(
@@ -1672,7 +1673,6 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
             ),
           ),
         ),
-        const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1696,7 +1696,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
               ),
             ),
             const SizedBox(width: 8),
-            Text('최근 기록 (${_formatDate(_exerciseData.first['recentDate'])})'),
+            const Text('최고 기록'),
           ],
         ),
         const SizedBox(height: 16),
@@ -1706,28 +1706,45 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(8),
           ),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.only(
+            top: 8,
+            left: 12,
+            right: 12,
+            bottom: 8,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children:
                 _exerciseData.map((data) {
                   final improvement = _formatImprovement(
                     data['initialWeight'] as double,
-                    data['recentWeight'] as double,
+                    data['maxWeight'] as double,
                   );
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      '${data['exercise']}: $improvement',
-                      style: TextStyle(
-                        color:
-                            improvement.contains('증가')
-                                ? Colors.green
-                                : improvement.contains('감소')
-                                ? Colors.red
-                                : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${data['exercise']}: $improvement',
+                          style: TextStyle(
+                            color:
+                                improvement.contains('증가')
+                                    ? Colors.green
+                                    : improvement.contains('감소')
+                                    ? Colors.red
+                                    : Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '최고 기록: ${_formatDate(data['maxDate'])} (${data['maxType']})',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }).toList(),
@@ -1741,7 +1758,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     double maxWeight = 0;
     for (var data in _exerciseData) {
       maxWeight = math.max(maxWeight, data['initialWeight']);
-      maxWeight = math.max(maxWeight, data['recentWeight']);
+      maxWeight = math.max(maxWeight, data['maxWeight']);
     }
     return maxWeight;
   }
@@ -1749,7 +1766,7 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
   List<Map<String, dynamic>> get _exerciseData {
     final Map<String, List<Map<String, dynamic>>> exerciseRecords = {};
 
-    // 모든 운동 기록 수집
+    // 개인 운동 기록 수집
     for (var record in _exerciseRecords) {
       final recordDate = DateTime.parse(record.date);
       for (var exercise in record.records) {
@@ -1760,11 +1777,26 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         exerciseRecords[exercise.exerciseName]!.add({
           'weight': weight,
           'date': recordDate,
+          'type': '개인',
         });
       }
     }
 
-    // 각 운동별로 최초/최근 기록 찾기
+    // PT 운동 기록 수집
+    for (var record in _ptLogExercises) {
+      for (var exercise in record.exercises) {
+        if (!exerciseRecords.containsKey(exercise.exerciseName)) {
+          exerciseRecords[exercise.exerciseName] = [];
+        }
+        exerciseRecords[exercise.exerciseName]!.add({
+          'weight': exercise.weight.toDouble(),
+          'date': record.date,
+          'type': 'PT',
+        });
+      }
+    }
+
+    // 각 운동별로 초기 기록과 최고 중량 기록 찾기
     final List<Map<String, dynamic>> result = [];
     for (var entry in exerciseRecords.entries) {
       final records = entry.value;
@@ -1774,12 +1806,21 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
         (a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime),
       );
 
+      // 최고 중량 기록 찾기
+      final maxWeightRecord = records.reduce(
+        (curr, next) =>
+            (curr['weight'] as double) > (next['weight'] as double)
+                ? curr
+                : next,
+      );
+
       result.add({
         'exercise': entry.key,
         'initialWeight': records.first['weight'],
-        'recentWeight': records.last['weight'],
+        'maxWeight': maxWeightRecord['weight'],
         'initialDate': records.first['date'],
-        'recentDate': records.last['date'],
+        'maxDate': maxWeightRecord['date'],
+        'maxType': maxWeightRecord['type'],
       });
     }
 
@@ -1787,6 +1828,12 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     final exerciseCounts = <String, int>{};
     for (var record in _exerciseRecords) {
       for (var exercise in record.records) {
+        exerciseCounts[exercise.exerciseName] =
+            (exerciseCounts[exercise.exerciseName] ?? 0) + 1;
+      }
+    }
+    for (var record in _ptLogExercises) {
+      for (var exercise in record.exercises) {
         exerciseCounts[exercise.exerciseName] =
             (exerciseCounts[exercise.exerciseName] ?? 0) + 1;
       }
@@ -1807,8 +1854,8 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
     return '${date.year}년 ${date.month}월 ${date.day}일';
   }
 
-  String _formatImprovement(double initialWeight, double recentWeight) {
-    final improvement = (recentWeight - initialWeight).toInt();
+  String _formatImprovement(double initialWeight, double maxWeight) {
+    final improvement = (maxWeight - initialWeight).toInt();
     if (improvement > 0) {
       return '초기 대비 ${improvement}Kg 증가했습니다.';
     } else if (improvement < 0) {
@@ -1820,8 +1867,18 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
 
   Widget _buildExerciseTypeDistribution() {
     final exerciseTypes = <String, int>{};
+
+    // 개인 운동 기록 수집
     for (var record in _exerciseRecords) {
       for (var exercise in record.records) {
+        exerciseTypes[exercise.exerciseName] =
+            (exerciseTypes[exercise.exerciseName] ?? 0) + 1;
+      }
+    }
+
+    // PT 운동 기록 수집
+    for (var record in _ptLogExercises) {
+      for (var exercise in record.exercises) {
         exerciseTypes[exercise.exerciseName] =
             (exerciseTypes[exercise.exerciseName] ?? 0) + 1;
       }
@@ -1843,16 +1900,21 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
       0,
       (sum, count) => sum + count,
     );
+
+    final entries = exerciseTypes.entries.toList();
     final sections =
-        exerciseTypes.entries.map((entry) {
-          final percentage = (entry.value / total * 100).round();
-          final colorIndex =
-              exerciseTypes.keys.toList().indexOf(entry.key) % colors.length;
+        entries.asMap().entries.map((entry) {
+          final index = entry.key;
+          final exercise = entry.value;
+          final percentage = (exercise.value / total * 100).round();
+          final color = colors[index % colors.length];
+          final isSelected = _selectedExerciseIndex == index;
+
           return PieChartSectionData(
-            value: entry.value.toDouble(),
+            value: exercise.value.toDouble(),
             title: '$percentage%',
-            color: colors[colorIndex],
-            radius: 60,
+            color: color,
+            radius: isSelected ? 70 : 60,
             titleStyle: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -1863,66 +1925,117 @@ class _ExerciseReportTabState extends State<ExerciseReportTab>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(width: 16),
-              SizedBox(
-                width: 150,
-                height: 150,
-                child: PieChart(
-                  PieChartData(
-                    sections: sections,
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 30,
-                  ),
-                ),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 파이 차트 부분
+          SizedBox(
+            width: 150,
+            height: 150,
+            child: PieChart(
+              PieChartData(
+                sections: sections,
+                sectionsSpace: 2,
+                centerSpaceRadius: 30,
               ),
-              const SizedBox(width: 40),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children:
-                      exerciseTypes.entries.map((entry) {
-                        final index = exerciseTypes.keys.toList().indexOf(
-                          entry.key,
-                        );
-                        final percentage = (entry.value / total * 100).round();
-                        final color = colors[index % colors.length];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+            ),
+          ),
+          const SizedBox(width: 48),
+          // 칩들 부분
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...entries
+                    .asMap()
+                    .entries
+                    .map((entry) {
+                      final index = entry.key;
+                      final exercise = entry.value;
+                      final percentage = (exercise.value / total * 100).round();
+                      final color = colors[index % colors.length];
+                      final isSelected = _selectedExerciseIndex == index;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedExerciseIndex =
+                                  isSelected ? null : index;
+                            });
+                          },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.15),
+                              color: color.withOpacity(isSelected ? 0.3 : 0.15),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: color, width: 1.5),
                             ),
                             child: Text(
-                              '${entry.key} ($percentage%)',
+                              '${exercise.key} ($percentage%)',
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                                fontWeight:
+                                    isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
                                 color: color,
                               ),
                             ),
                           ),
-                        );
-                      }).toList(),
-                ),
-              ),
-            ],
+                        ),
+                      );
+                    })
+                    .take(_isChipsExpanded ? entries.length : 3)
+                    .toList(),
+                if (entries.length > 3)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isChipsExpanded = !_isChipsExpanded;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _isChipsExpanded ? '접기' : '더보기',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            _isChipsExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
