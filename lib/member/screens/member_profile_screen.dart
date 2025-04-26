@@ -1,13 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/member.dart';
-import '../../widgets/custom_dialog.dart';
-import '../services/member_service.dart';
+import '../../screens/home_screen.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/common_bottom_navigation_bar.dart';
+import '../../widgets/custom_dialog.dart';
 import '../screens/member_calendar_screen.dart';
 import '../screens/member_chat_screen.dart';
-import '../../screens/home_screen.dart';
+import '../services/member_service.dart';
 
 class MemberProfileScreen extends StatefulWidget {
   const MemberProfileScreen({Key? key}) : super(key: key);
@@ -130,24 +130,15 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
+  Future<void> logout() async {
     try {
-      await _memberService.logout();
-    } catch (e) {
-      // 로그아웃 API 호출 실패는 무시하고 진행
-      if (kDebugMode) {
-        print('로그아웃 API 호출 실패: $e');
-      }
-    } finally {
+      await AuthService.logout();
       if (mounted) {
-        Navigator.pop(context); // 프로필 화면 닫기
-        Navigator.pop(context); // 홈 화면 닫기
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('로그아웃 중 오류가 발생했습니다.');
       }
     }
   }
@@ -276,7 +267,9 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
                       ),
                       const SizedBox(height: 16),
                       TextButton(
-                        onPressed: _isLoading ? null : _logout,
+                        onPressed: () {
+                          logout();
+                        },
                         style: TextButton.styleFrom(
                           backgroundColor: const Color(0xFFFF0000),
                           foregroundColor: Colors.white,
@@ -312,13 +305,17 @@ class _MemberProfileScreenState extends State<MemberProfileScreen> {
             case 0:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MemberCalendarScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const MemberCalendarScreen(),
+                ),
               );
               break;
             case 1:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const MemberChatScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const MemberChatScreen(),
+                ),
               );
               break;
             case 2:
