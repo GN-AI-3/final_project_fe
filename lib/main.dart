@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:syncfusion_localizations/syncfusion_localizations.dart';
+import 'package:gymggun/trainer/screens/calendar_screen.dart';
+import 'package:gymggun/member/screens/member_calendar_screen.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
@@ -45,6 +47,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: FCMService.navigatorKey,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -95,6 +98,8 @@ class _MyAppState extends State<MyApp> {
       routes: {
         '/home': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
+        '/trainer_calendar': (context) => const CalendarScreen(),
+        '/member_calendar': (context) => const MemberCalendarScreen(),
       },
     );
   }
