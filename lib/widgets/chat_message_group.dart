@@ -55,6 +55,9 @@ class ChatMessageGroup extends StatelessWidget {
                       bottom: isLastInGroup ? 4.0 : 2.0,
                     ),
                     child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.55,
+                      ),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 10,
@@ -62,13 +65,14 @@ class ChatMessageGroup extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isUserMessage
                             ? const Color(0xff2746f8)
-                            : Colors.grey[200],
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
                         message.content,
                         style: TextStyle(
                           color: isUserMessage ? Colors.white : Colors.black87,
+                          fontSize: 15,
                         ),
                       ),
                     ),

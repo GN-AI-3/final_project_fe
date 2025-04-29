@@ -57,6 +57,7 @@ class _MyAppState extends State<MyApp> {
         Locale('ar'),
         Locale('ja'),
       ],
+      debugShowCheckedModeBanner: false,
       locale: const Locale('ko', 'KR'),
       title: 'GYMGGUN',
       theme: ThemeData(
