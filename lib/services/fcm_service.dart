@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
+import 'package:gymggun/services/auth_service.dart';
 
 class FCMService {
   static final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -56,6 +57,9 @@ class FCMService {
   static const String _actionResume = 'resume';
   static const String _actionStop = 'stop';
 
+  // 정적 네비게이터 키 추가
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
   static Future<void> initialize() async {
     // FCM 디버그 로그 활성화
     if (kDebugMode) {
@@ -100,7 +104,7 @@ class FCMService {
         if (kDebugMode) {
           print('알림 탭: ${response.payload}');
         }
-        // TODO: 여기에 알림 탭 처리 로직 추가
+        _handleNotificationResponse(response);
       },
     );
 
@@ -156,9 +160,18 @@ class FCMService {
     // 앱이 백그라운드에서도 알림을 표시하기 위해 직접 알림 표시
     final notification = message.notification;
     if (notification != null) {
+      // PT 일정 알림인지 확인
+      String? payload = null;
+      String title = notification.title ?? '새 알림';
+      
+      // 제목에 'PT 일정'이 포함되어 있으면 PT 일정 알림으로 처리
+      if (title.contains('PT 일정') || title.contains('PT 회원 명단')) {
+        payload = 'pt_schedule';
+      }
+      
       flutterLocalNotificationsPlugin.show(
         notification.hashCode,
-        notification.title ?? '새 알림',
+        title,
         notification.body ?? '',
         NotificationDetails(
           android: AndroidNotificationDetails(
@@ -169,6 +182,7 @@ class FCMService {
             priority: Priority.high,
           ),
         ),
+        payload: payload, // 페이로드 추가
       );
     }
   }
@@ -181,9 +195,18 @@ class FCMService {
     // 직접 알림 표시 (먼저 기본 알림부터 표시)
     final notification = message.notification;
     if (notification != null) {
+      // PT 일정 알림인지 확인
+      String? payload = null;
+      String title = notification.title ?? '새 알림';
+      
+      // 제목에 'PT 일정'이 포함되어 있으면 PT 일정 알림으로 처리
+      if (title.contains('PT 일정') || title.contains('PT 회원 명단')) {
+        payload = 'pt_schedule';
+      }
+      
       flutterLocalNotificationsPlugin.show(
         notification.hashCode,
-        notification.title ?? '새 알림',
+        title,
         notification.body ?? '',
         NotificationDetails(
           android: AndroidNotificationDetails(
@@ -194,6 +217,7 @@ class FCMService {
             priority: Priority.high,
           ),
         ),
+        payload: payload, // 페이로드 추가
       );
       
       // 추가적으로 커스텀 알림 표시 시도
@@ -207,6 +231,92 @@ class FCMService {
     } else {
       if (kDebugMode) {
         print('알림 데이터가 없는 메시지: ${message.data}');
+      }
+    }
+  }
+
+  static void _handleNotificationResponse(NotificationResponse response) async {
+    if (kDebugMode) {
+      print('알림 탭 감지: ${response.payload}');
+      print('NavigatorKey 상태: ${navigatorKey.currentState != null}');
+    }
+    
+    // 알림 페이로드 확인
+    final payload = response.payload;
+    
+    if (payload == null || payload.isEmpty) {
+      if (kDebugMode) {
+        print('페이로드가 없는 알림입니다.');
+      }
+      return;
+    }
+    
+    // 알림 유형에 따라 처리
+    switch (payload) {
+      case 'pt_schedule':
+        await _handlePtScheduleNotification();
+        break;
+      case 'chat_notification':
+        if (kDebugMode) {
+          print('채팅 알림 탭 - 채팅 화면으로 이동 예정');
+        }
+        // TODO: 채팅 화면으로 이동 로직 구현
+        break;
+      case 'image_notification':
+      case 'media_notification':
+      case 'progress_notification':
+      case 'default_notification':
+      default:
+        if (kDebugMode) {
+          print('일반 알림 탭: $payload');
+        }
+        // 일반 알림은 현재 특별한 처리 없음
+        break;
+    }
+  }
+  
+  // PT 일정 알림 처리 메소드 분리
+  static Future<void> _handlePtScheduleNotification() async {
+    if (kDebugMode) {
+      print('PT 일정 알림 탭 - 캘린더 화면으로 이동 시도');
+    }
+    
+    // 사용자 유형 확인 (AuthService 사용)
+    try {
+      final isTrainer = await AuthService.isTrainer();
+      
+      if (kDebugMode) {
+        print('사용자 유형: ${isTrainer ? "트레이너" : "회원"}');
+        print('네비게이터 키 사용 가능: ${navigatorKey.currentState != null}');
+      }
+      
+      // 사용자 유형에 따라 적절한 캘린더 화면으로 이동
+      if (navigatorKey.currentState != null) {
+        if (isTrainer) {
+          if (kDebugMode) {
+            print('트레이너 캘린더 화면으로 이동 시작: /trainer_calendar');
+          }
+          navigatorKey.currentState!.pushNamed('/trainer_calendar');
+          if (kDebugMode) {
+            print('트레이너 캘린더 화면으로 이동 완료');
+          }
+        } else {
+          if (kDebugMode) {
+            print('회원 캘린더 화면으로 이동 시작: /member_calendar');
+          }
+          navigatorKey.currentState!.pushNamed('/member_calendar');
+          if (kDebugMode) {
+            print('회원 캘린더 화면으로 이동 완료');
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print('네비게이터 상태가 null입니다. 이동 실패.');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('캘린더 화면 이동 중 오류 발생: $e');
       }
     }
   }
@@ -322,6 +432,7 @@ class FCMService {
               interruptionLevel: InterruptionLevel.timeSensitive,
             ),
           ),
+          payload: 'pt_schedule', // 페이로드 추가
         );
         
         if (kDebugMode) {
@@ -592,7 +703,13 @@ class FCMService {
       
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
       
-      await flutterLocalNotificationsPlugin.show(id, title, body, details);
+      await flutterLocalNotificationsPlugin.show(
+        id, 
+        title, 
+        body, 
+        details,
+        payload: 'default_notification', // 기본 페이로드 추가
+      );
       
       if (kDebugMode) {
         print('기본 알림 표시 성공: $title');
@@ -676,7 +793,13 @@ class FCMService {
     
     final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
     
-    await flutterLocalNotificationsPlugin.show(id, title, body, details);
+    await flutterLocalNotificationsPlugin.show(
+      id, 
+      title, 
+      body, 
+      details,
+      payload: 'image_notification',
+    );
   }
   
   // 미디어 컨트롤이 있는 알림
@@ -721,7 +844,13 @@ class FCMService {
     
     final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
     
-    await flutterLocalNotificationsPlugin.show(id, title, body, details);
+    await flutterLocalNotificationsPlugin.show(
+      id, 
+      title, 
+      body, 
+      details,
+      payload: 'media_notification',
+    );
   }
   
   // 진행 상태를 보여주는 알림
@@ -753,6 +882,7 @@ class FCMService {
       title, 
       body, 
       details,
+      payload: 'progress_notification',
     );
   }
 }
