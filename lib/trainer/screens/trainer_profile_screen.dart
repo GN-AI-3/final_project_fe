@@ -59,6 +59,37 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
     }
   }
 
+  Future<void> _showRoleSwitchDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('역할 전환'),
+        content: const Text('멤버 화면으로 전환하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await AuthService.login('user1@test.com', '1234', 'member');
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -179,7 +210,7 @@ class _TrainerProfileScreenState extends State<TrainerProfileScreen> {
               _navigateToScreen(const PtContractScreen());
               break;
             case 4:
-              // 현재 화면이므로 아무것도 하지 않음
+              _showRoleSwitchDialog();
               break;
           }
         },

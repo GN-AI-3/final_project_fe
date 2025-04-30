@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:gymggun/trainer/screens/trainer_profile_screen.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 import '../../models/meeting.dart';
@@ -17,6 +16,7 @@ import '../../screens/home_screen.dart';
 import '../services/pt_contract_service.dart';
 import '../services/pt_logs_service.dart';
 import '../services/schedule_service.dart';
+import '../../services/auth_service.dart';
 
 class CalendarConstants {
   static const Map<String, String> statusDescriptions = {
@@ -488,15 +488,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => TrainingReportScreen(
-                    ptContractId: meeting.ptContractId!,
+              // 데모 회원인 경우에만 트레이닝 리포트 화면으로 이동
+              if (meeting.eventName.contains('데모')) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => TrainingReportScreen(
+                      ptContractId: meeting.ptContractId!,
+                    ),
                   ),
-                ),
-              );
+                );
+              } else {
+                // 데모 회원이 아닌 경우 메시지 표시
+                CustomToast.show(
+                  context: context,
+                  message: '체험 화면에선 데모 회원님의 트레이닝 리포트만\n보실 수 있습니다',
+                  type: ToastType.info,
+                );
+              }
             },
             icon: const Icon(Icons.assessment),
             label: const Text('트레이닝 리포트'),
@@ -1001,6 +1011,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadMeetings(startDate: startDate, endDate: endDate);
   }
 
+  Future<void> _showRoleSwitchDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('역할 전환'),
+        content: const Text('멤버 화면으로 전환하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await AuthService.login('user1@test.com', '1234', 'member');
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1206,10 +1247,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               );
               break;
             case 4:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TrainerProfileScreen()),
-              );
+              _showRoleSwitchDialog();
               break;
           }
         },

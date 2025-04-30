@@ -4,17 +4,16 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:gymggun/trainer/screens/trainer_profile_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/chat_message.dart';
 import '../services/trainer_chat_service.dart';
-import '../../widgets/chat_input_field.dart';
 import '../../widgets/common_bottom_navigation_bar.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/pt_contract_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../widgets/chat_message_group.dart';
+import '../../services/auth_service.dart';
 
 class TrainerChatConstants {
   static const String userRole = 'user';
@@ -196,6 +195,37 @@ class TrainerChatScreenState extends State<TrainerChatScreen> {
     }
   }
 
+  Future<void> _showRoleSwitchDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('역할 전환'),
+        content: const Text('멤버 화면으로 전환하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await AuthService.login('user1@test.com', '1234', 'member');
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -207,20 +237,16 @@ class TrainerChatScreenState extends State<TrainerChatScreen> {
       body: SafeArea(
         child: Container(
           color: const Color(0xfff0f0f0),
-          child: Column(
-            children: [
-              Expanded(
-                child: _buildMessageList(),
+          child: const Center(
+            child: Text(
+              '트레이너 채팅 기능은 현재 질문 대응 강화를 위한 점검중입니다.\n 정식 출시를 기대해주세요!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+                height: 1.5,
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: ChatInputField(
-                  controller: _messageController,
-                  onSend: _sendMessage,
-                  isLoading: _isLoading,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -251,10 +277,7 @@ class TrainerChatScreenState extends State<TrainerChatScreen> {
               );
               break;
             case 4:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TrainerProfileScreen()),
-              );
+              _showRoleSwitchDialog();
               break;
           }
         },

@@ -14,6 +14,8 @@ import '../../widgets/common_bottom_navigation_bar.dart';
 import '../screens/member_calendar_screen.dart';
 import '../screens/member_profile_screen.dart';
 import '../../screens/home_screen.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/custom_toast.dart';
 
 class MemberChatConstants {
   static const String userRole = 'user';
@@ -246,6 +248,37 @@ class MemberChatScreenState extends State<MemberChatScreen> {
     );
   }
 
+  Future<void> _showRoleSwitchDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('역할 전환'),
+        content: const Text('트레이너 화면으로 전환하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await AuthService.login('trainer@example.com', '1234', 'trainer');
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -289,7 +322,14 @@ class MemberChatScreenState extends State<MemberChatScreen> {
               _navigateToScreen(const HomeScreen());
               break;
             case 3:
-              _navigateToScreen(const MemberProfileScreen());
+              CustomToast.show(
+                context: context,
+                message: '현재 준비중입니다.',
+                type: ToastType.info,
+              );
+              break;
+            case 4:
+              _showRoleSwitchDialog();
               break;
           }
         },

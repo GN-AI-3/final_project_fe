@@ -2,7 +2,6 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:gymggun/trainer/screens/trainer_profile_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/pt_contract.dart';
@@ -15,6 +14,7 @@ import '../services/pt_contract_service.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/trainer_chat_screen.dart';
 import '../../screens/home_screen.dart';
+import '../../services/auth_service.dart';
 
 class PtContractScreen extends StatefulWidget {
   const PtContractScreen({Key? key}) : super(key: key);
@@ -433,6 +433,37 @@ class PtContractScreenState extends State<PtContractScreen> {
     );
   }
 
+  Future<void> _showRoleSwitchDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('역할 전환'),
+        content: const Text('멤버 화면으로 전환하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await AuthService.login('user1@test.com', '1234', 'member');
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -629,10 +660,7 @@ class PtContractScreenState extends State<PtContractScreen> {
               // 현재 화면이므로 아무것도 하지 않음
               break;
             case 4:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TrainerProfileScreen()),
-              );
+              _showRoleSwitchDialog();
               break;
           }
         },

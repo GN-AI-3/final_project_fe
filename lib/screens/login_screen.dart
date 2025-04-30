@@ -70,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return WillPopScope(
       onWillPop: () async {
         exit(0);
-        return false;
       },
       child: Scaffold(
         backgroundColor: const Color(0xfff0f0f0),

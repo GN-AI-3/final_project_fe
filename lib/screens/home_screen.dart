@@ -5,16 +5,15 @@ import 'package:intl/intl.dart';
 
 import '../member/screens/member_calendar_screen.dart';
 import '../member/screens/member_chat_screen.dart';
-import '../member/screens/member_profile_screen.dart';
 import '../models/meeting.dart';
 import '../services/auth_service.dart';
 import '../trainer/screens/calendar_screen.dart';
 import '../trainer/screens/pt_contract_screen.dart';
 import '../trainer/screens/trainer_chat_screen.dart';
-import '../trainer/screens/trainer_profile_screen.dart';
 import '../trainer/services/schedule_service.dart' as trainer_schedule_service;
 import '../widgets/common_bottom_navigation_bar.dart';
 import '../widgets/custom_dialog.dart';
+import '../widgets/custom_toast.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -121,7 +120,45 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToScreen(Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+    );
+  }
+
+  Future<void> _showRoleSwitchDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('역할 전환'),
+        content: const Text('다른 역할의 화면으로 전환하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      if (_isTrainer) {
+        await AuthService.login('user1@test.com', '1234', 'member');
+      } else {
+        await AuthService.login('trainer@example.com', '1234', 'trainer');
+      }
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    }
   }
 
   void _showErrorDialog(String error) {
@@ -349,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Welcome message
                 const SizedBox(height: 72),
                 Text(
-                  '$_userName님 환영합니다 :)',
+                  '$_userName${_isTrainer ? ' 트레이너' : ' 회원'}님 환영합니다 :)',
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -527,15 +564,15 @@ class _HomeScreenState extends State<HomeScreen> {
               if (_isTrainer) {
                 _navigateToScreen(const PtContractScreen());
               } else {
-                _navigateToScreen(const MemberCalendarScreen());
+                CustomToast.show(
+                  context: context,
+                  message: '현재 준비중입니다.',
+                  type: ToastType.info,
+                );
               }
               break;
             case 4:
-              _navigateToScreen(
-                _isTrainer
-                    ? const TrainerProfileScreen()
-                    : const MemberProfileScreen(),
-              );
+              _showRoleSwitchDialog();
               break;
           }
         },

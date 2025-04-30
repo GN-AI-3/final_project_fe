@@ -13,8 +13,10 @@ import '../screens/member_personal_exercise_screen.dart';
 import '../services/member_personal_exercise_service.dart';
 import '../../widgets/common_bottom_navigation_bar.dart';
 import '../screens/member_chat_screen.dart';
-import '../screens/member_profile_screen.dart';
 import '../../screens/home_screen.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/custom_toast.dart';
+import '../../trainer/services/pt_logs_service.dart';
 
 class MemberCalendarConstants {
   static const Map<String, String> statusDescriptions = {
@@ -84,6 +86,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
   final ScheduleService _scheduleService = MemberScheduleService();
   final MemberPersonalExerciseService _exerciseService =
       MemberPersonalExerciseService();
+  final PtLogsService _ptLogsService = PtLogsService();
   final MemberCalendarState _state = MemberCalendarState();
   DateTime _selectedDate = DateTime.now();
   bool _isButtonVisible = false;
@@ -170,10 +173,10 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
               'cancelled',
               'no_show',
             ].contains(schedule.status.toLowerCase())
-            ? '${_getStatusDescription(schedule.status)} ${schedule.trainerName} 트레이너님 - ${schedule.reason}'
+            ? '${_getStatusDescription(schedule.status)} ${schedule.reason}'
             : schedule.status.toLowerCase() == 'scheduled'
             ? '${schedule.currentPtCount}회차 PT'
-            : '${_getStatusDescription(schedule.status)} ${schedule.trainerName} 트레이너님 (${schedule.currentPtCount}회차)';
+            : '${_getStatusDescription(schedule.status)} PT 스케줄 (${schedule.currentPtCount}회차)';
 
     return Meeting(
       eventName,
@@ -216,7 +219,7 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
   void _showMeetingDetails(Meeting meeting) {
     CustomDialog.show(
       context: context,
-      title: meeting.eventName,
+      title: 'PT 스케줄',
       content: Container(
         width: double.infinity,
         alignment: Alignment.centerLeft,
@@ -225,10 +228,35 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (meeting.description != '운동 기록') ...[
-              Text('시작 일시: ${_formatDateTime(meeting.from)}'),
-              Text('종료 일시: ${_formatDateTime(meeting.to)}'),
-              const SizedBox(height: 8),
-              Text('${meeting.description}'),
+              if (meeting.description?.contains('[완료된 일정]') ?? false) ...[
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      final exercises = await _ptLogsService.getPtLogExercises(
+                        meeting.scheduleId!,
+                      );
+                      if (!mounted) return;
+
+                      Navigator.pop(context);
+                      _showPtLogDetails(exercises, meeting);
+                    } catch (e) {
+                      if (!mounted) return;
+                      CustomToast.show(
+                        context: context,
+                        message: '해당 일정의 PT 일지가 없습니다.',
+                        type: ToastType.info,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.history),
+                  label: const Text('PT 기록 보기'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 45),
+                  ),
+                ),
+              ],
             ],
             if (meeting.description == '운동 기록') ...[
               FutureBuilder<List<GroupedExerciseRecord>>(
@@ -347,14 +375,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         ),
       ),
       actions: [
-        if (meeting.description?.contains('[완료된 일정]') ?? false)
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: 일지 조회 기능 구현
-            },
-            child: const Text('PT 기록 보기'),
-          ),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('닫기'),
@@ -470,10 +490,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     );
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}년 ${dateTime.month}월 ${dateTime.day}일 ${dateTime.hour}시 ${dateTime.minute}분';
-  }
-
   void _changeView() {
     setState(() {
       _state.updateView(
@@ -487,6 +503,16 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
     setState(() {
       if (_state.selectedStatus == null) {
         _state.updateFilteredMeetings(_state.meetings);
+      } else if (_state.selectedStatus == 'scheduled') {
+        // scheduled와 completed 상태의 일정만 표시
+        _state.updateFilteredMeetings(
+          _state.meetings.where((meeting) {
+            final status = meeting.description?.split('\n')[0];
+            return status == null || 
+                   !status.contains('[') || 
+                   status.contains('[완료된 일정]');
+          }).toList(),
+        );
       } else {
         final targetDescription =
             MemberCalendarConstants.statusDescriptions[_state.selectedStatus!
@@ -494,9 +520,6 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
         _state.updateFilteredMeetings(
           _state.meetings.where((meeting) {
             final status = meeting.description?.split('\n')[0];
-            if (_state.selectedStatus!.toLowerCase() == 'scheduled') {
-              return status == null || !status.contains('[');
-            }
             return status == targetDescription;
           }).toList(),
         );
@@ -564,6 +587,114 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.year}년 ${date.month}월 ${date.day}일';
+  }
+
+  Future<void> _showRoleSwitchDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('역할 전환'),
+        content: const Text('트레이너 화면으로 전환하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await AuthService.login('trainer@example.com', '1234', 'trainer');
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
+  void _showPtLogDetails(List<PtLogExercise> exercises, Meeting meeting) {
+    CustomDialog.show(
+      context: context,
+      title: 'PT 기록',
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children:
+              exercises
+                  .map(
+                    (exercise) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 12,
+                          bottom: 16,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              exercise.exerciseName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildExerciseDetail(
+                                  '무게',
+                                  '${exercise.weight}kg',
+                                ),
+                                _buildExerciseDetail(
+                                  '횟수',
+                                  exercise.reps.toString(),
+                                ),
+                                _buildExerciseDetail(
+                                  '세트',
+                                  exercise.sets.toString(),
+                                ),
+                                _buildExerciseDetail(
+                                  '휴식',
+                                  '${exercise.restTime}초',
+                                ),
+                              ],
+                            ),
+                            if (exercise.feedback?.isNotEmpty ?? false) ...[
+                              const SizedBox(height: 8),
+                              const Text(
+                                '피드백:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Text(exercise.feedback ?? ''),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('닫기'),
+        ),
+      ],
+    );
   }
 
   @override
@@ -781,10 +912,14 @@ class _MemberCalendarScreenState extends State<MemberCalendarScreen> {
               );
               break;
             case 3:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MemberProfileScreen()),
+              CustomToast.show(
+                context: context,
+                message: '현재 준비중입니다.',
+                type: ToastType.info,
               );
+              break;
+            case 4:
+              _showRoleSwitchDialog();
               break;
           }
         },

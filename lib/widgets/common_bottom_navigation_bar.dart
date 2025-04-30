@@ -67,8 +67,8 @@ class CommonBottomNavigationBar extends StatelessWidget {
                   label: '계약',
                 ),
                 const BottomNavigationBarItem(
-                  icon: Icon(Icons.person),
-                  label: '프로필',
+                  icon: Icon(Icons.swap_horiz),
+                  label: '전환',
                 ),
               ]
             : [
@@ -99,12 +99,12 @@ class CommonBottomNavigationBar extends StatelessWidget {
                   label: '홈',
                 ),
                 const BottomNavigationBarItem(
-                  icon: Icon(Icons.fitness_center),
-                  label: '운동',
+                  icon: Icon(Icons.construction),
+                  label: '준비중',
                 ),
                 const BottomNavigationBarItem(
-                  icon: Icon(Icons.person),
-                  label: '프로필',
+                  icon: Icon(Icons.swap_horiz),
+                  label: '전환',
                 ),
               ],
         onTap: onTap,
